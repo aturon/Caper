@@ -17,7 +17,7 @@
       (unless (box-cas! head snapshot node)
 	(retry))))
 
-  (define (try-pop s x)
+  (define (try-pop s)
     (define head (tstack-head s))
     (let retry ()
       (define snapshot (unbox head))
