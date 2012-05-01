@@ -7,7 +7,7 @@
 ;; measure-throughput: syntax -> syntax
 
 ;; (measure-throughput code threads) measures how many times on average `code'
-;; executes, per millisecond, while run in `threads' parallel threads.
+;; executes, per microsecond, while run in `threads' parallel threads.
 (define-syntax (measure-throughput stx)
   (syntax-parse stx
     [(_ code threads:integer)
@@ -24,4 +24,4 @@
            (let ([tid (future thread-body)] ...)
              (touch tid) ...)
            (define end-time (current-milliseconds))
-           (/ iters (- end-time start-time))))]))
+           (/ (/ iters (- end-time start-time)) 1000)))]))
