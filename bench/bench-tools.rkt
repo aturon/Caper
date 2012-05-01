@@ -2,7 +2,7 @@
 
 ; provides generic benchmarking tools
 
-(require (for-syntax racket/base syntax/parse) racket/future)
+(require (for-syntax racket/base syntax/parse) racket/future racket/unsafe/ops)
 (provide measure-throughput measure-all-throughputs)
 
 ; total iterations is currently a magic constant, but should
@@ -19,7 +19,10 @@
        #'(let ()
            (define iters/thread (floor (/ iters threads)))
            (define (thread-body)
-             (for ([i (in-range iters/thread)]) code))
+             (let loop ([i iters/thread])
+               (unless (unsafe-fx= i 0)
+                 code
+                 (loop (unsafe-fx- i 1)))))
            (define start-time (current-inexact-milliseconds))
            (let ([tid (future thread-body)] ...)
              (touch tid) ...)
@@ -35,4 +38,6 @@
      (with-syntax ([(measurement ...)
 		    (build-list max-threads
 				(lambda (n) #`(cons #,(add1 n) (measure-throughput #,(add1 n) code))))])
-       #'(list measurement ...))]))
+       #'(begin 
+           (printf "running ~a iterations\n" iters)
+           (list measurement ...)))]))
