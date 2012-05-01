@@ -1,6 +1,6 @@
-#lang racket
+#lang racket/base
 
-(require scheme/future)
+(require racket/future)
 (provide make-treiber-stack push pop)
 
 (struct tstack (head))
@@ -19,8 +19,7 @@
 
 (define (pop s 
 	     [failure-result 
-	      (lambda () 
-		(error (string-append "pop: stack is empty")))])
+	      (λ () (raise-type-error 'pop "non-empty stack" s))])
   (define head (tstack-head s))
   (let retry ()
     (define snapshot (unbox head))
