@@ -1,4 +1,4 @@
-#lang scheme
+#lang racket
 
 (require scheme/future)
 (provide make-treiber-stack push pop)
@@ -26,7 +26,7 @@
     (define snapshot (unbox head))
     (cond
       [(eq? snapshot '()) 
-       (if (proc? failure-result) (failure-result) failure-result)]
+       (if (procedure? failure-result) (failure-result) failure-result)]
       [(box-cas! head snapshot (mcdr snapshot))
        (mcar snapshot)]
       [else 
