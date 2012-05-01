@@ -8,7 +8,7 @@
 ; total iterations is currently a magic constant, but should
 ; eventually be dynamically determined to be large enough to
 ; get an accurate measurement.
-(define iters 100000000)
+(define iters 10000000)
 
 ; (measure-throughput code threads) measures how many times on average `code'
 ; executes, per microsecond, while run in `threads' parallel threads.
@@ -33,6 +33,6 @@
   (syntax-parse stx
     [(_ code)
      (with-syntax ([(measurement ...)
-		    (build-list (sub1 max-threads) 
+		    (build-list max-threads
 				(lambda (n) #`(cons #,(add1 n) (measure-throughput #,(add1 n) code))))])
        #'(list measurement ...))]))
