@@ -1,5 +1,7 @@
 #lang racket/base
 
+; a by-hand implementation of Treiber's stack, using mutable cons cells
+
 (require racket/future)
 (provide make-treiber-stack push pop)
 
