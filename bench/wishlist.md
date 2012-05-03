@@ -1,0 +1,3 @@
+- add simple work simulator (e.g. PRNG)
+- test by-hand Treiber with varying amounts of work
+- add nonblocking counter and benchmark it against JVM (which removes allocation from the picture)

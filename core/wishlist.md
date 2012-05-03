@@ -1,1 +1,2 @@
-Basic combinators
+- KCAS implementation 
+- basic combinators
