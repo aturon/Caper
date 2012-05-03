@@ -35,7 +35,7 @@
     (let retry ()
       (define snapshot (unsafe-unbox* head))
       (update-node node _x snapshot)
-      (unless (box-cas! head snapshot node)
+      (unless (unsafe-box*-cas! head snapshot node)
         (retry)))))
 
 (define (push s x)
@@ -44,7 +44,7 @@
   (let retry ()
     (define snapshot (unsafe-unbox* head))
     (update-node node x snapshot)
-    (unless (box-cas! head snapshot node)
+    (unless (unsafe-box*-cas! head snapshot node)
       (retry))))
 
 (define (pop s 
