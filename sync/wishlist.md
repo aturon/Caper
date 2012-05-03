@@ -1,0 +1,7 @@
+- mutex locks (with condition variables)
+- RW locks
+- exchangers
+- count-down latch
+- cyclic barriers
+- phasers
+- semaphores
