@@ -2,7 +2,7 @@ Caper: concurrent and parallel extensions to Racket
 
 Directory structure
 
-- `core`: an implementation of (reagents)[http://www.ccs.neu.edu/home/turon/reagents.pdf] both as combinators and an embedded DSL
+- `core`: an implementation of [reagents](http://www.ccs.neu.edu/home/turon/reagents.pdf) both as combinators and an embedded DSL
 
 - `data`: concurrent data structures built from reagents
 
