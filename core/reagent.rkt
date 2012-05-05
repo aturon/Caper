@@ -40,25 +40,25 @@
 ;; Core reagent implementation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define (empty-fragment k retry-k block-k result kcas-list)
-  (k retry-k block-k result kcas-list))
+(define (empty-fragment k retry-k block-k kcas-list)
+  (k retry-k block-k (void) kcas-list))
 
-(define ((cas-fragment box-exp ov-exp nv-exp) k retry-k block-k result kcas-list)
+(define ((cas-fragment box-exp ov-exp nv-exp) k retry-k block-k kcas-list)
   (with-syntax ([finish (k retry-k block-k (void) (cons #'(b ov nv) kcas-list))])
     #`(begin (define b  (atomic-ref-box #,box-exp))
 	     (define ov #,ov-exp)
 	     (define nv #,nv-exp)
 	     finish)))
 
-(define ((sequence-fragments f1 f2) k retry-k block-k result kcas-list)
+(define ((sequence-fragments f1 f2) k retry-k block-k kcas-list)
   (f1 (lambda (retry-k block-k result kcas-list)
-        (f2 k retry-k block-k result kcas-list))
-      retry-k block-k result kcas-list))
+        (f2 k retry-k block-k kcas-list))
+      retry-k block-k kcas-list))
 
-(define ((choice-of-fragments f1 f2) k retry-k block-k result kcas-list)
-  (with-syntax ([first-body          (f1 k #'(alt-with-retry) #'(right) result kcas-list)]
-		[alt-body            (f2 k retry-k block-k result kcas-list)]
-		[alt-with-retry-body (f2 k retry-k retry-k result kcas-list)])
+(define ((choice-of-fragments f1 f2) k retry-k block-k kcas-list)
+  (with-syntax ([first-body          (f1 k #'(alt-with-retry) #'(right) kcas-list)]
+		[alt-body            (f2 k retry-k block-k kcas-list)]
+		[alt-with-retry-body (f2 k retry-k retry-k  kcas-list)])
     #'(begin (define (alt) alt-body)
 	     (define (alt-with-retry) alt-with-retry-body)
 	     first-body)))
@@ -77,7 +77,7 @@
     #`(if try-kcas #,result #,retry-k)))
 
 (define (close-fragment f)
-  (with-syntax ([finish (f commit #'(retry) #'(retry) (void) '())])
+  (with-syntax ([finish (f commit #'(retry) #'(retry) '())])
     #'(let retry ()
         finish)))
 
