@@ -1,19 +1,23 @@
-#lang racket/base
+#lang racket
 
 ; a specialized form of box usable within reagents; allows KCAS operations
 
-(require racket/future racket/unsafe/ops)
+(require racket/future racket/unsafe/ops
+         (for-syntax syntax/parse))
 (provide atomic-ref
          atomic-ref?
-         atomic-ref-ref
+         atomic-ref-read
          atomic-ref-cas!
+         atomic-ref-box ;; internal library use only!
          kcas-item
          kcas!)
 
 ; internal, generative value for kcas acquisition of an atomic-ref
 (define locked (gensym))
 
-(struct atomic-ref (box) #:constructor-name internal-make-atomic-ref)
+(struct atomic-ref (box)
+  #:constructor-name internal-make-atomic-ref
+  #:omit-define-syntaxes)
 
 ; atomic-ref: any/c -> atomic-ref?
 ; constructs an atomic reference holding some initial value
@@ -39,10 +43,7 @@
 
 ; k-word compare-and-set implementation
 
-(struct kcas-item (box ov nv) #:constructor-name internal-make-kcas-item)
-
-(define (kcas-item ar ov nv)
-  (internal-make-kcas-item (atomic-ref-box ar) ov nv))
+(struct kcas-item (box ov nv))
 
 ; currently we take a dirt-simple, obstructable approach
 (define (kcas! items)
@@ -76,4 +77,4 @@
      (atomic-ref-cas! ar ov nv)]
     [_ (match (acquire items)
          ['() (commit items)]
-         [unacquired (roll-bak-until items unacquired)])]))
+         [unacquired (roll-back-until items unacquired)])]))
