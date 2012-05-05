@@ -1,6 +1,6 @@
 #lang racket
 
-(require syntax/parse unstable/syntax
+(require syntax/parse unstable/syntax racket/syntax
          "atomic-ref.rkt"
          (for-syntax "atomic-ref.rkt"))
 
@@ -44,7 +44,8 @@
   (k retry-k block-k (void) kcas-list))
 
 (define ((cas-fragment box-exp ov-exp nv-exp) k retry-k block-k kcas-list)
-  (with-syntax ([finish (k retry-k block-k (void) (cons #'(b ov nv) kcas-list))])
+  (with-syntax ([(b ov nv) (generate-temporaries '(b ov ov))]
+                [finish (k retry-k block-k (void) (cons #'(b ov nv) kcas-list))])
     #`(begin (define b  (atomic-ref-box #,box-exp))
 	     (define ov #,ov-exp)
 	     (define nv #,nv-exp)
@@ -56,9 +57,10 @@
       retry-k block-k kcas-list))
 
 (define ((choice-of-fragments f1 f2) k retry-k block-k kcas-list)
-  (with-syntax ([first-body          (f1 k #'(alt-with-retry) #'(right) kcas-list)]
-		[alt-body            (f2 k retry-k block-k kcas-list)]
-		[alt-with-retry-body (f2 k retry-k retry-k  kcas-list)])
+  (with-syntax ([(alt alt-with-retry) (generate-temporaries '(alt alt-with-retry))]
+                [first-body           (f1 k #'(alt-with-retry) #'(alt) kcas-list)]
+		[alt-body             (f2 k retry-k block-k kcas-list)]
+		[alt-with-retry-body  (f2 k retry-k retry-k kcas-list)])
     #'(begin (define (alt) alt-body)
 	     (define (alt-with-retry) alt-with-retry-body)
 	     first-body)))
@@ -76,11 +78,6 @@
   (with-syntax ([try-kcas (static-kcas! kcas-list)])
     #`(if try-kcas #,result #,retry-k)))
 
-(define (close-fragment f)
-  (with-syntax ([finish (f commit #'(retry) #'(retry) '())])
-    #'(let retry ()
-        finish)))
-
 (define (interpret-clause clause)
   (syntax-parse clause #:literals (cas! choice)
     [(cas! box-exp ov-exp nv-exp)
@@ -93,6 +90,12 @@
   (foldr sequence-fragments
          empty-fragment
          (syntax-map interpret-clause clauses)))
+
+(define (close-fragment f)
+  (with-syntax ([retry (generate-temporary 'retry)]
+                [finish (f commit #'(retry) #'(retry) '())])
+    #'(let retry ()
+        finish)))
 
 (define (define-reagent stx)
   (syntax-parse stx 
