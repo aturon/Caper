@@ -1,25 +1,15 @@
 #lang racket
 
-(require "syntax.rkt" "keywords.rkt" "atomic-ref.rkt"
+(require "syntax.rkt" "keywords.rkt"
          (for-syntax syntax/parse unstable/syntax racket/syntax racket/pretty
-		     "syntax.rkt" "fragment.rkt" "atomic-ref.rkt")
-	 (for-template racket/base racket/future racket/unsafe/ops
-		       "atomic-ref.rkt"))
+		     "syntax.rkt" "fragment.rkt")
+	 (for-template racket/base))
 
 (provide define-reagent)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Core reagent implementation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-; the final continuation
-(define-for-syntax (commit retry-k block-k result kcas-list)
-  #`(if (static-kcas! #,@kcas-list) #,result #,retry-k))
-
-(define-for-syntax (close-fragment f)
-  (with-syntax* ([retry (generate-temporary 'retry)]
-                 [finish (f commit #'(retry) #'(retry) '())])
-    #'(let retry () finish)))
 
 (define-syntax (define-reagent stx)
   (syntax-parse stx 
