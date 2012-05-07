@@ -67,6 +67,10 @@
      [(cons x xs) (update-to! xs) x]
      [_ #f])))
      
+(pmacro
+ (define-reagent (r x)
+   x))
+
 
 #|
 
