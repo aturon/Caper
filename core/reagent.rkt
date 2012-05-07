@@ -1,10 +1,10 @@
 #lang racket
 
-(require syntax/parse unstable/syntax racket/syntax
-         "atomic-ref.rkt"
-         "syntax.rkt"
-         "fragment.rkt"
-         (for-syntax "atomic-ref.rkt"))
+(require "syntax.rkt" "keywords.rkt" "atomic-ref.rkt"
+         (for-syntax syntax/parse unstable/syntax racket/syntax racket/pretty
+		     "syntax.rkt" "fragment.rkt" "atomic-ref.rkt")
+	 (for-template racket/base racket/future racket/unsafe/ops
+		       "atomic-ref.rkt"))
 
 (provide define-reagent)
 
@@ -12,53 +12,54 @@
 ;; Core reagent implementation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define (static-kcas! kcas-list)
-  (syntax-parse (datum->syntax #'dummy kcas-list)
-    [()
-     #'#t]
-    [((b ov nv))
-     #'(unsafe-box*-cas! b ov nv)]
-    [((b ov nv) ...)
-     #'(kcas! (list (kcas-item b ov nv) ...))]))
-
 ; the final continuation
-(define (commit retry-k block-k result kcas-list)
-  (with-syntax ([try-kcas (static-kcas! kcas-list)])
-    #`(if try-kcas #,result #,retry-k)))
+(define-for-syntax (commit retry-k block-k result kcas-list)
+  #`(if (static-kcas! #,@kcas-list) #,result #,retry-k))
 
-(define (close-fragment f)
+(define-for-syntax (close-fragment f)
   (with-syntax* ([retry (generate-temporary 'retry)]
                  [finish (f commit #'(retry) #'(retry) '())])
-    #'(let retry ()
-        finish)))
+    #'(let retry () finish)))
 
-(define (define-reagent stx)
+(define-syntax (define-reagent stx)
   (syntax-parse stx 
-    [(_ (name arg ...) body:reagent-body)
+    [(_ (name:id arg:id ...) body:reagent-body)
      (with-syntax ([closed-body (close-fragment (attribute body.fragment))])
        #'(define (name arg ...) closed-body))]))
 
-(pretty-print
- (syntax->datum (define-reagent
-                  #'(define-reagent (r x)))))
+(define-syntax (pmacro stx)
+  (syntax-parse stx
+    [(_ e:expr) #'(pretty-print (syntax->datum (expand-once #'e)))]))
 
-(pretty-print
- (syntax->datum (define-reagent
-                  #'(define-reagent (r x)
-                      (cas! box old new)))))
+(pmacro
+ (define-reagent (r x)))
 
-(pretty-print
- (syntax->datum (define-reagent
-                  #'(define-reagent (r x)
-                      (cas! box old new)
-                      (cas! box old new)))))
+(pmacro
+ (define-reagent (r x)
+   (cas! box old new)))
 
-(pretty-print
- (syntax->datum (define-reagent
-                  #'(define-reagent (r x)
-                      (choice
-                       ((cas! box old new))
-                       ((cas! box old new)))))))
+(pmacro
+ (define-reagent (r x)
+   (cas! box old new)
+   (cas! box old new)))
+
+(pmacro
+ (define-reagent (r x)
+   (choice
+    ((cas! box old new))
+    ((cas! box old new)))))
+
+(pmacro
+ (define-reagent (r x)
+   (choice
+    ((cas! box old new)
+     (cas! box old new))
+    ((cas! box old new)))))
+
+(pmacro
+(define-reagent (push s x)
+  (read-match s
+    [xs (update-to! (cons x xs))])))
 
 #|
 

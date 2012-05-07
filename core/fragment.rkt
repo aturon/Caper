@@ -2,9 +2,20 @@
 
 ; Fragments: an expansion-time monad for generating reagent code
 
-(require (for-syntax "atomic-ref.rkt")
+; TODO: refactor this in an explicitly monadic style
+
+(require (for-template racket/base "atomic-ref.rkt")
          racket/syntax)
-(provide empty-fragment cas!-fragment sequence-fragments choice-of-fragments)
+(provide empty-fragment 
+	 cas!-fragment 
+	 sequence-fragments 
+	 choice-of-fragments 
+	 read-match-fragment
+	 (struct-out read-match-clause-with-update)
+	 (struct-out read-match-clause-no-update))
+
+(struct read-match-clause-with-update (pat pre upd-exp post))
+(struct read-match-clause-no-update (pat body))
 
 (define (empty-fragment
          k retry-k block-k kcas-list)
@@ -14,18 +25,28 @@
          k retry-k block-k kcas-list)
   (with-syntax* ([(b ov nv) (generate-temporaries '(b ov ov))]
                  [finish (k retry-k block-k (void) (cons #'(b ov nv) kcas-list))])
-    #`(begin (define b  (atomic-ref-box #,atomic-ref-exp))
-	     (define ov #,old-value-exp)
-	     (define nv #,new-value-exp)
-	     finish)))
+    #`(let ([b (atomic-ref-box #,atomic-ref-exp)]
+	    [ov #,old-value-exp]
+	    [nv #,new-value-exp])
+	finish)))
 
-;; (define ((match-read-fragment atomic-ref-exp clauses)
-;;          k retry-k block-k kcas-list)
-;;   (with-syntax ([(b ov nv) (generate-temporaries '(b ov ov))])
-;;     (define (interpret-clause clause)
-;;       (syntax-parse clause #:literals (update-to)
-;;         [(pat body-before ... (update-to nv-exp) body-after ...)
-;;          (pat 
+(define ((read-match-fragment atomic-ref-exp clauses)
+         k retry-k block-k kcas-list)
+  (define/with-syntax (b ov nv) (generate-temporaries '(b ov ov)))
+  (define (finish-clause clause)
+    (match clause
+      [(read-match-clause-with-update pat pre upd-exp post)
+       (define (upd-fragment k retry-k block-k kcas-list)
+	 (with-syntax ([finish (k retry-k block-k (void) (cons #'(b ov nv) kcas-list))])
+	   #`(let ([nv #,upd-exp]) finish)))
+       #`[#,pat #,((sequence-fragments pre upd-fragment post) k retry-k block-k kcas-list)]]
+      [(read-match-clause-no-update pat body)
+       ; eventually, we probably want to mark "visible reads" differently in the kcas-list
+       #`[#,pat #,(k retry-k block-k (cons #'(b ov ov) kcas-list))]]))
+  (with-syntax ([(finished-clause ...) (map finish-clause clauses)])
+    #'(let ([b (atomic-ref-box #,atomic-ref-exp)]
+	    [ov (unsafe-unbox* b)])
+	(match ov finished-clause ...))))
 
 (define (sequence-fragments . fs)
   ; this can probably be defined more intelligently...
@@ -42,6 +63,6 @@
                  [first-body           (f1 k #'(alt-with-retry) #'(alt) kcas-list)]
                  [alt-body             (f2 k retry-k block-k kcas-list)]
                  [alt-with-retry-body  (f2 k retry-k retry-k kcas-list)])
-    #'(begin (define (alt) alt-body)
-	     (define (alt-with-retry) alt-with-retry-body)
-	     first-body)))
+    #'(let ([alt (lambda () alt-body)]
+	    [alt-with-retry (lambda () alt-with-retry-body)])
+	first-body)))

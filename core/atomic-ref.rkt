@@ -9,6 +9,7 @@
          atomic-ref-read
          atomic-ref-cas!
          atomic-ref-box ;; internal library use only!
+	 static-kcas!   ;; internal library use only!
          kcas-item
          kcas!)
 
@@ -78,3 +79,12 @@
     [_ (match (acquire items)
          ['() (commit items)]
          [unacquired (roll-back-until items unacquired)])]))
+
+; for internal use only
+(define-syntax (static-kcas! stx)
+  (syntax-parse stx
+    [(_) #'#t]
+    [(_ (b ov nv))
+     #'(unsafe-box*-cas! b ov nv)]
+    [(_ (b ov nv) ...)
+     #'(kcas! (list (kcas-item b ov nv) ...))]))
