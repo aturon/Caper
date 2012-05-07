@@ -33,7 +33,10 @@
                                                 (attribute r2.fragment)))
 
   (pattern (read-match atomic-ref:expr clause:read-match-clause ...)
-           #:attr fragment (read-match-fragment #'atomic-ref (attribute clause.fragment))))
+           #:attr fragment (read-match-fragment #'atomic-ref (attribute clause.fragment)))
+
+  (pattern e:expr
+	   #:attr fragment (expr-fragment #'e)))
   
 (define-splicing-syntax-class reagent-body
   (pattern (~seq c:reagent-clause ...)

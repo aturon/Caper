@@ -57,9 +57,16 @@
     ((cas! box old new)))))
 
 (pmacro
-(define-reagent (push s x)
-  (read-match s
-    [xs (update-to! (cons x xs))])))
+ (define-reagent (push s x)
+   (read-match s
+     [xs (update-to! (cons x xs))])))
+
+(pmacro
+ (define-reagent (pop s)
+   (read-match s
+     [(cons x xs) (update-to! xs) x]
+     [_ #f])))
+     
 
 #|
 

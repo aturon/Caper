@@ -11,6 +11,7 @@
 	 sequence-fragments 
 	 choice-of-fragments 
 	 read-match-fragment
+	 expr-fragment
 	 (struct-out read-match-clause-with-update)
 	 (struct-out read-match-clause-no-update))
 
@@ -23,7 +24,7 @@
 
 (define ((cas!-fragment atomic-ref-exp old-value-exp new-value-exp)
          k retry-k block-k kcas-list)
-  (with-syntax* ([(b ov nv) (generate-temporaries '(b ov ov))]
+  (with-syntax* ([(b ov nv) (generate-temporaries '(b ov nv))]
                  [finish (k retry-k block-k (void) (cons #'(b ov nv) kcas-list))])
     #`(let ([b (atomic-ref-box #,atomic-ref-exp)]
 	    [ov #,old-value-exp]
@@ -32,7 +33,7 @@
 
 (define ((read-match-fragment atomic-ref-exp clauses)
          k retry-k block-k kcas-list)
-  (define/with-syntax (b ov nv) (generate-temporaries '(b ov ov)))
+  (define/with-syntax (b ov nv) (generate-temporaries '(b ov nv)))
   (define (finish-clause clause)
     (match clause
       [(read-match-clause-with-update pat pre upd-exp post)
@@ -42,9 +43,9 @@
        #`[#,pat #,((sequence-fragments pre upd-fragment post) k retry-k block-k kcas-list)]]
       [(read-match-clause-no-update pat body)
        ; eventually, we probably want to mark "visible reads" differently in the kcas-list
-       #`[#,pat #,(k retry-k block-k (cons #'(b ov ov) kcas-list))]]))
+       #`[#,pat #,(k retry-k block-k (void) (cons #'(b ov ov) kcas-list))]]))
   (with-syntax ([(finished-clause ...) (map finish-clause clauses)])
-    #'(let ([b (atomic-ref-box #,atomic-ref-exp)]
+    #`(let ([b (atomic-ref-box #,atomic-ref-exp)]
 	    [ov (unsafe-unbox* b)])
 	(match ov finished-clause ...))))
 
@@ -63,6 +64,13 @@
                  [first-body           (f1 k #'(alt-with-retry) #'(alt) kcas-list)]
                  [alt-body             (f2 k retry-k block-k kcas-list)]
                  [alt-with-retry-body  (f2 k retry-k retry-k kcas-list)])
-    #'(let ([alt (lambda () alt-body)]
+    #'(let ([alt            (lambda () alt-body)]
 	    [alt-with-retry (lambda () alt-with-retry-body)])
 	first-body)))
+
+(define ((expr-fragment e)
+	 k retry-k block-k kcas-list)
+  (with-syntax ([result (generate-temporary 'result)])
+    #`(let ([result #,e])
+	#,(k retry-k block-k #'result kcas-list))))
+  
