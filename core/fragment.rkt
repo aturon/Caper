@@ -1,5 +1,7 @@
 #lang racket
 
+; Fragments: an expansion-time monad for generating reagent code
+
 (require (for-syntax "atomic-ref.rkt")
          racket/syntax)
 (provide empty-fragment cas!-fragment sequence-fragments choice-of-fragments)
@@ -17,7 +19,8 @@
 	     (define nv #,new-value-exp)
 	     finish)))
 
-;; (define ((match-read-fragment box-exp clauses) k retry-k block-k kcas-list)
+;; (define ((match-read-fragment atomic-ref-exp clauses)
+;;          k retry-k block-k kcas-list)
 ;;   (with-syntax ([(b ov nv) (generate-temporaries '(b ov ov))])
 ;;     (define (interpret-clause clause)
 ;;       (syntax-parse clause #:literals (update-to)
