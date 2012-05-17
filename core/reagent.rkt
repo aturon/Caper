@@ -11,11 +11,8 @@
 ;; Core reagent implementation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-syntax (define-reagent stx)
-  (syntax-parse stx 
-    [(_ (name:id arg:id ...) body:reagent-body)
-     (with-syntax ([closed-body (close-fragment (attribute body.fragment))])
-       #'(define (name arg ...) closed-body))]))
+(define-simple-macro (define-reagent (name:id arg:id ...) body:reagent-body)
+  (define (name arg ...) (close-fragment body.fragment)))
 
 (define-syntax (pmacro stx)
   (syntax-parse stx
