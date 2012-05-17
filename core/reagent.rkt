@@ -1,8 +1,9 @@
 #lang racket
 
-(require "syntax.rkt" "keywords.rkt"
-         (for-syntax syntax/parse unstable/syntax racket/syntax racket/pretty
-		     "syntax.rkt" "fragment.rkt")
+(require "syntax.rkt" "keywords.rkt" "fragment.rkt"
+	 syntax/parse/define
+	 macro-debugger/expand
+         (for-syntax "syntax.rkt" syntax/parse unstable/syntax racket/syntax racket/pretty)
 	 (for-template racket/base))
 
 (provide define-reagent)
@@ -16,8 +17,17 @@
 
 (define-syntax (pmacro stx)
   (syntax-parse stx
-    [(_ e:expr) #'(pretty-print (syntax->datum (expand-once #'e)))]))
+    [(_ e:expr) #'(begin (pretty-print (syntax->datum (expand-once #'e)))
+			 (pretty-print (syntax->datum (expand-only #'e (list #'define-reagent #'sequence)))))]))
 
+(define b '())
+(define o '())
+(define n '())
+
+(define-reagent (r x)
+   (cas! b o n))
+
+#|
 (pmacro
  (define-reagent (r x)))
 
@@ -57,7 +67,7 @@
 (pmacro
  (define-reagent (r x)
    x))
-
+|#
 
 #|
 

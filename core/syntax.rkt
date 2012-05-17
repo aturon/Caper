@@ -27,7 +27,7 @@
            #:attr fragment #'(cas!-fragment atomic-ref old-value new-value))
 
   (pattern (choice [r1:reagent-body] [r2:reagent-body])
-           #:attr fragment #'(choice r1.fragment r2.fragment))
+           #:attr fragment #'(choose-fragment r1.fragment r2.fragment))
 
   (pattern (read-match atomic-ref:expr clause:read-match-clause ...)
            #:attr fragment #'(read-match-fragment atomic-ref clause.fragment ...))

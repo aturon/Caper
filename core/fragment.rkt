@@ -4,15 +4,16 @@
 
 ; TODO: refactor this in an explicitly monadic style
 
-(require (for-template racket/base "atomic-ref.rkt")
+(require "atomic-ref.rkt"
+	 (for-syntax syntax/parse 
+		     racket/syntax)
 	 syntax/parse/define
 	 racket/stxparam
-	 racket/stxparam-exptime
-         racket/syntax)
+	 racket/stxparam-exptime)
 (provide continue-with
          cas!-fragment 
 	 sequence
-	 choice
+	 choose-fragment
 	 read-match-fragment
 	 close-fragment)
 
@@ -86,7 +87,7 @@
 			      (syntax-parser [(continue-with result) (sequence f ...)])])
          f1)]))
 
-(define-syntax (choose stx)
+(define-syntax (choose-fragment stx)
   (define/with-syntax (alt alt-with-retry) (generate-temporaries '(alt alt-with-retry)))
   (syntax-parse stx
     [(_ f1 f2)
@@ -98,7 +99,7 @@
 (define-syntax (close-fragment stx)
   (define/with-syntax (retry-loop result) (generate-temporaries '(retry-loop result)))
   (syntax-parse stx
-    [(_ f) #'(let retry-loop ()
+    [(_ f) #`(let retry-loop ()
 	       (with-retry-handler (retry-loop)
 		(with-block-handler (retry-loop)
 		 (bind (result f)
