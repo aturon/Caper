@@ -23,7 +23,7 @@
 ; atomic-ref: any/c -> atomic-ref?
 ; constructs an atomic reference holding some initial value
 (define (atomic-ref init)
-  (internal-make-atomic-ref (box (init))))
+  (internal-make-atomic-ref (box init)))
 
 ; atomic-ref-read: atomic-ref? -> any/c
 ; snapshots the current value of an atomic-ref
