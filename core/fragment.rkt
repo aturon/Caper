@@ -106,6 +106,11 @@
 	 (with-retry-handler (alt-with-retry)
           (with-block-handler (alt) f1)))]))
 
+;; indirection so that this expands at the right time
+(define-syntax (do-kcas! stx)
+  (syntax-parse stx
+    [(_) #`(static-kcas! #,@(syntax-parameter-value #'kcas-list))]))
+
 (define-syntax (close-fragment stx)
   (define/with-syntax (retry-loop result) (generate-temporaries '(retry-loop result)))
   (syntax-parse stx
@@ -113,6 +118,6 @@
 	       (with-retry-handler (retry-loop)
 		(with-block-handler (retry-loop)
 		 (bind (result f)
-		   (if (static-kcas! #,@(syntax-parameter-value #'kcas-list))
+		   (if (do-kcas!)
 		       result
 		       (retry))))))]))
