@@ -4,9 +4,10 @@
 
 ; TODO: refactor this in an explicitly monadic style
 
-(require "atomic-ref.rkt"
+(require "atomic-ref.rkt" "keywords.rkt"
 	 (for-syntax syntax/parse 
 		     racket/syntax)
+         racket/unsafe/ops
 	 syntax/parse/define
 	 racket/stxparam
 	 racket/stxparam-exptime)
@@ -82,14 +83,16 @@
                               post ...)]))
   (syntax-parse stx #:literals (update-to!)
     [(_ ar-e cl:clause ...)
-     #'(let ([b (atomic-ref-box ar-e)]
-	     [ov (unsafe-unbox* b)])
-         cl.mclause ...)]))
+     #'(let* ([b (atomic-ref-box ar-e)]
+              [ov (unsafe-unbox* b)])
+         (match ov cl.mclause ...))]))
 
 (define-simple-macro (bind (x:id e:expr) body ...)
   (syntax-parameterize ([continue-with 
-			 (syntax-parser [(continue-with result)
-					 #'(let ([x result]) body ...)])])
+			 (let ([old (syntax-parameter-value #'continue-with)])
+                           (syntax-parser [(continue-with result)
+                                           #`(let ([x result]) 
+                                               (syntax-parameterize ([continue-with #,old]) body ...))]))])
      e))
 
 (define-syntax (sequence stx)
@@ -97,16 +100,15 @@
     [(_)   #'(continue-with (void))]
     [(_ f) #'f]
     [(_ f1 f ...)
-     #'(syntax-parameterize ([continue-with 
-			      (syntax-parser [(continue-with result) (sequence f ...)])])
-         f1)]))
+     #'(bind (_ f1) (sequence f ...))]))
 
 (define-syntax (choose-fragment stx)
   (define/with-syntax (alt alt-with-retry) (generate-temporaries '(alt alt-with-retry)))
   (syntax-parse stx
     [(_ f1 f2)
-     #'(let ([alt            (λ () f2)]
-	     [alt-with-retry (λ () (with-block-handler (retry) f1))])  ; WARNING: retry is currently evaluated at the wrong time!
+     #'(let* ([retry*         (λ () (retry))]
+              [alt            (λ () f2)]              
+              [alt-with-retry (λ () (with-block-handler (retry*) f2))])
 	 (with-retry-handler (alt-with-retry)
           (with-block-handler (alt) f1)))]))
 
@@ -121,7 +123,7 @@
     [(_ f) #`(let retry-loop ()
 	       (with-retry-handler (retry-loop)
 		(with-block-handler (retry-loop)
-		 (bind (result f)
+		 (bind (result f) ;; FIXME: delay this allocation until after the kcas
 		   (if (do-kcas!)
 		       result
 		       (retry))))))]))
