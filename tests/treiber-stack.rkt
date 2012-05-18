@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require "../treiber-stack.rkt" 
+(require "../by-hand/treiber-stack.rkt" 
 	 "test-tools.rkt"
 	 rackunit)
 
