@@ -12,8 +12,8 @@
 ;; Core reagent implementation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-simple-macro (define-reagent (name:id arg:id ...) body:reagent-body)
-  (define (name arg ...) (close-fragment body.fragment)))
+(define-simple-macro (define-reagent header:expr body:reagent-body)
+  (define header (close-fragment body.fragment)))
 
 (define (cleanup s)  
   (match s
