@@ -14,10 +14,10 @@
            #:attr fragment
 	          #'(match-pat pre.fragment ...
 			       (update-to! new-value)
-			       post.fragment ...)))
-  ;; (pattern (match-pat f:reagent-clause ...)
-  ;;          #:attr fragment 
-  ;;                 (#'match-pat (update-to!) f.fragment ...)))
+			       post.fragment ...))
+   (pattern (match-pat f:reagent-clause ...)
+            #:attr fragment 
+                   #'(match-pat (update-to!) f.fragment ...)))
 
 (define-syntax-class reagent-clause
   #:literals (cas! choice read-match)

@@ -64,13 +64,23 @@
 
 (define-syntax (read-match-fragment stx)
   (define/with-syntax (b ov nv) (generate-temporaries '(b ov nv)))
+  (define-syntax-class clause
+    #:literals (update-to!)
+    #:attributes (mclause)
+    (pattern [pat pre ... (update-to! up-e) post ...]
+             #:with mclause
+             #'[pat (sequence pre ... 
+                              (let ([nv up-e]) (with-cas (b ov nv) (continue-with (void))))
+                              post ...)])
+    (pattern [pat (update-to!) post ...]
+             #:with mclause
+             #'[pat (sequence (with-cas (b ov ov) (continue-with (void)))
+                              post ...)]))
   (syntax-parse stx #:literals (update-to!)
-    [(_ ar-e [pat pre ... (update-to! up-e) post ...] ...)
-     #'(let ([b (atomic-ref-box #,atomic-ref-exp)]
+    [(_ ar-e cl:clause ...)
+     #'(let ([b (atomic-ref-box ar-e)]
 	     [ov (unsafe-unbox* b)])
-	 (match ov [pat (sequence pre ... 
-				  (let ([nv up-e]) (continue-with (void)))
-				  post ...)] ...))]))
+         cl.mclause ...)]))
 
 (define-simple-macro (bind (x:id e:expr) body ...)
   (syntax-parameterize ([continue-with 
@@ -91,8 +101,8 @@
   (define/with-syntax (alt alt-with-retry) (generate-temporaries '(alt alt-with-retry)))
   (syntax-parse stx
     [(_ f1 f2)
-     #'(let ([alt            (lambda () f2)]
-	     [alt-with-retry (lambda () (with-block-handler (retry) f1))])  ; WARNING: retry is currently evaluated at the wrong time!
+     #'(let ([alt            (λ () f2)]
+	     [alt-with-retry (λ () (with-block-handler (retry) f1))])  ; WARNING: retry is currently evaluated at the wrong time!
 	 (with-retry-handler (alt-with-retry)
           (with-block-handler (alt) f1)))]))
 
