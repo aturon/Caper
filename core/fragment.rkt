@@ -17,6 +17,10 @@
 	 read-match-fragment
 	 close-fragment)
 
+;; for debugging only
+(provide with-cas with-retry-handler with-block-handler retry block continue-with
+         static-kcas! bind do-kcas!)
+
 ; the continuation environment
 (define-syntax-parameter continue-with (syntax-rules ())) ; normal continuation
 (define-syntax-parameter retry (syntax-rules ())) ; transient failure

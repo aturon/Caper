@@ -18,14 +18,20 @@
 (define-syntax (pmacro stx)
   (syntax-parse stx
     [(_ e:expr) #'(begin (pretty-print (syntax->datum (expand-once #'e)))
-			 (pretty-print (syntax->datum (expand-only #'e (list #'define-reagent #'sequence)))))]))
+			 (pretty-print
+                          (syntax->datum
+                           (expand-only 
+                            #'e 
+                            (list #'define-reagent #'sequence #'close-fragment #'cas!-fragment
+                                  #'with-retry-handler #'with-block-handler #'bind #'with-cas
+                                  #'retry #'block #'continue-with #'static-kcas! #'do-kcas!)))))]))
 
 (define b '())
 (define o '())
 (define n '())
 
-(define-reagent (r x)
-   (cas! b o n))
+(pmacro (define-reagent (r x)
+   (cas! b o n)))
 
 #|
 (pmacro
