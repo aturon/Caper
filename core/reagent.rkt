@@ -6,14 +6,14 @@
          (for-syntax "syntax.rkt" racket/base syntax/parse unstable/syntax racket/syntax racket/pretty)
 	 (for-template racket/base))
 
-(provide define-reagent cas! read-match update-to!)
+(provide define-reagent cas! read-match update-to! pmacro)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Core reagent implementation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-simple-macro (define-reagent header:expr body:reagent-body)
-  (define header (close-fragment body.fragment)))
+  (define header (let () body.prelude ... (close-fragment body.fragment))))
 
 (define (cleanup s)  
   (match s
@@ -94,3 +94,7 @@
              (lambda (r) ... (reagent-fragment r)))
 
 |#
+
+(pmacro (define-reagent (push2 s x)
+  (read-match (tstack-head s)
+    [xs (update-to! (cons x xs))])))

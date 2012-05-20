@@ -2,7 +2,7 @@
 
 ; a reagent implementation of Treiber's stack, using cons cells
 
-(require racket/future racket/performance-hint racket/unsafe/ops caper/core/reagent caper/core/atomic-ref)
+(require racket/future racket/performance-hint racket/unsafe/ops caper/core/reagent caper/core/atomic-ref) 
 (provide make-treiber-stack push pop)
 
 (struct tstack (head)
