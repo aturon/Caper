@@ -2,8 +2,6 @@
 
 ; Fragments: an expansion-time monad for generating reagent code
 
-; TODO: refactor this in an explicitly monadic style
-
 (require "atomic-ref.rkt" "keywords.rkt"
 	 (for-syntax syntax/parse 
 		     racket/syntax)
@@ -16,7 +14,9 @@
 	 sequence
 	 choose-fragment
 	 read-match-fragment
-	 close-fragment)
+	 dynamic-fragment
+	 close-fragment
+	 reify-fragment)
 
 ;; for debugging only
 (provide with-cas with-retry-handler with-block-handler retry block continue-with
@@ -41,22 +41,6 @@
 (define-simple-macro (with-block-handler handler body ...)
   (syntax-parameterize ([block (syntax-parser [(block) #'handler])])
     body ...))
-
-;; (define-simple-macro (close-fragment e)
-;; (syntax-parameterize ([continue-with 
-;; 		       (syntax-parser 
-;; 			[(_ a) 				       
-;; 			 #`(if (static-kcas! #,@(syntax-parameter-value #'kcas-list))
-;; 			       a 
-;; 			       (retry))])])
-;;    (let retry ()
-;;      (with-retry-handler 
-;;       (with-block-handler e retry)
-;;       retry))))
-
-;; (define-syntax (let-fresh stx)
-;;   (syntax-parse stx
-;;     [(let-fresh ([x:id e:expr] ...) body ...)    
 
 (define-syntax (cas!-fragment stx)
   (define/with-syntax (b ov nv) (generate-temporaries '(b ov nv)))
@@ -90,7 +74,7 @@
 (define-simple-macro (bind (x:id e:expr) body ...)
   (syntax-parameterize ([continue-with 
 			 (let ([old (syntax-parameter-value #'continue-with)])
-                           (syntax-parser [(continue-with result)
+                           (syntax-parser [(_ result)
                                            #`(let ([x result]) 
                                                (syntax-parameterize ([continue-with #,old]) body ...))]))])
      e))
@@ -111,6 +95,23 @@
               [alt-with-retry (λ () (with-block-handler (retry*) f2))])
 	 (with-retry-handler (alt-with-retry)
           (with-block-handler (alt) f1)))]))
+
+(define-simple-macro (reify-fragment f)
+  (λ (k retry-k block-k)
+    (syntax-parameterize
+     ([continue-with (syntax-parser [(_ result) #`(k result #,(syntax-parameter-value #'kcas-list))])]
+      [retry (syntax-parser [(_) (retry-k)])]
+      [block (syntax-parser [(_) (block-k)])])
+     f)))
+
+(define-simple-macro (dynamic-fragment runtime-fragment)
+  (runtime-fragment (reify-k) (reify-retry-k) (reify-block-k)))
+
+(define-simple-macro (reify-k) 
+  (λ (result additional-kcas-list) ;; FIXME: accumulate dynamic KCAS clauses
+    (continue-with result)))
+(define-simple-macro (reify-retry-k) (λ () (retry)))
+(define-simple-macro (reify-block-k) (λ () (block)))
 
 ;; indirection so that this expands at the right time
 (define-syntax (do-kcas! stx)
