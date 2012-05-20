@@ -14,13 +14,13 @@
 	 sequence
 	 choose-fragment
 	 read-match-fragment
-	 dynamic-fragment
+	 reflect-fragment
 	 close-fragment
 	 reify-fragment)
 
 ;; for debugging only
 (provide with-cas with-retry-handler with-block-handler retry block continue-with
-         static-kcas! bind do-kcas! reify-k reify-retry-k reify-block-k)
+         static-kcas! bind do-kcas!)
 
 ; the continuation environment
 (define-syntax-parameter continue-with (syntax-rules ())) ; normal continuation
@@ -104,17 +104,12 @@
       [block (syntax-parser [(_) #'(block-k)])])
      f)))
 
-(define-simple-macro (dynamic-fragment runtime-fragment)
-  (let ([k       (reify-k)]
-	[retry-k (reify-retry-k)]
-	[block-k (reify-block-k)])
+(define-simple-macro (reflect-fragment runtime-fragment)
+  (let ([k       (λ (result additional-kcas-list) ;; FIXME: accumulate dynamic KCAS clauses
+		    (continue-with result))]
+	[retry-k (λ () (retry))]
+	[block-k (λ () (block))])
     (runtime-fragment k retry-k block-k)))
-
-(define-simple-macro (reify-k) 
-  (λ (result additional-kcas-list) ;; FIXME: accumulate dynamic KCAS clauses
-    (continue-with result)))
-(define-simple-macro (reify-retry-k) (λ () (retry)))
-(define-simple-macro (reify-block-k) (λ () (block)))
 
 ;; indirection so that this expands at the right time
 (define-syntax (do-kcas! stx)

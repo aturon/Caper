@@ -34,7 +34,7 @@
 		  (close-fragment #,(reagent-fragment r))))]
 	   [else
 	    ;; FIXME: this introduces an extra eta-expansion; is that a problem?
-	    #'(close-fragment (dynamic-fragment (name actual ...)))])]))
+	    #'(close-fragment (reflect-fragment (name actual ...)))])]))
 
 
 
@@ -57,8 +57,7 @@
                                    #'with-retry-handler #'with-block-handler #'bind #'with-cas
                                    #'choose-fragment #'read-match-fragment #'react
                                    #'retry #'block #'continue-with #'static-kcas! #'do-kcas!
-				   #'dynamic-fragment #'reify-fragment 
-				   #'reify-k #'reify-retry-k #'reify-block-k))))))]))
+				   #'reflect-fragment #'reify-fragment))))))]))
 
 (pmacro
  (begin
