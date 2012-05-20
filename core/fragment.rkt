@@ -20,7 +20,7 @@
 
 ;; for debugging only
 (provide with-cas with-retry-handler with-block-handler retry block continue-with
-         static-kcas! bind do-kcas!)
+         static-kcas! bind do-kcas! reify-k reify-retry-k reify-block-k)
 
 ; the continuation environment
 (define-syntax-parameter continue-with (syntax-rules ())) ; normal continuation
@@ -100,12 +100,15 @@
   (λ (k retry-k block-k)
     (syntax-parameterize
      ([continue-with (syntax-parser [(_ result) #`(k result #,(syntax-parameter-value #'kcas-list))])]
-      [retry (syntax-parser [(_) (retry-k)])]
-      [block (syntax-parser [(_) (block-k)])])
+      [retry (syntax-parser [(_) #'(retry-k)])]
+      [block (syntax-parser [(_) #'(block-k)])])
      f)))
 
 (define-simple-macro (dynamic-fragment runtime-fragment)
-  (runtime-fragment (reify-k) (reify-retry-k) (reify-block-k)))
+  (let ([k       (reify-k)]
+	[retry-k (reify-retry-k)]
+	[block-k (reify-block-k)])
+    (runtime-fragment k retry-k block-k)))
 
 (define-simple-macro (reify-k) 
   (λ (result additional-kcas-list) ;; FIXME: accumulate dynamic KCAS clauses
