@@ -45,20 +45,21 @@
 (define-syntax (cas!-fragment stx)
   (define/with-syntax (b ov nv) (generate-temporaries '(b ov nv)))
   (syntax-parse stx
-    [(_ ar-e ov-e nv-e)
-     #'(let ([b (unsafe-struct*-ref ar-e 0)]
+    [(_ bx-e ov-e nv-e)
+     #'(let ([b bx-e]
 	     [ov ov-e]
 	     [nv nv-e])
 	 (with-cas (b ov nv) (continue-with (void))))]))
 
 (define-syntax (read-match-fragment stx)
-  (define/with-syntax (b ov nv) (generate-temporaries '(b ov nv)))
+  (define/with-syntax (b ov nv) (generate-temporaries '(bx ov nv)))
   (define-syntax-class clause
     #:literals (update-to!)
     #:attributes (mclause)
     (pattern [pat (prelude ...) pre ... (update-to! up-e) post ...]
              #:with mclause
-             #'[pat prelude ... (sequence pre ... 
+             #'[pat prelude ... 
+                    (sequence pre ... 
                               (let ([nv up-e]) (with-cas (b ov nv) (continue-with (void))))
                               post ...)])
     (pattern [pat (prelude ...) (update-to!) post ...]
@@ -67,8 +68,8 @@
 		    (sequence (with-cas (b ov ov) (continue-with (void)))
 			      post ...)]))
   (syntax-parse stx #:literals (update-to!)
-    [(_ ar-e cl:clause ...)
-     #'(let* ([b (atomic-ref-box ar-e)]
+    [(_ bx-e cl:clause ...)
+     #'(let* ([b bx-e]
               [ov (unsafe-unbox* b)])
          (match ov cl.mclause ...))]))
 

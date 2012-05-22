@@ -10,6 +10,7 @@
          atomic-ref-cas!
          atomic-ref-box ;; internal library use only!
 	 static-kcas!   ;; internal library use only!
+         unsafe-atomic-ref-box  ;; internal use only!
          kcas-item
          kcas!)
 
@@ -19,6 +20,9 @@
 (struct atomic-ref (box)
   #:constructor-name internal-make-atomic-ref
   #:omit-define-syntaxes)
+
+(define-syntax-rule (unsafe-atomic-ref-box b)
+  (unsafe-struct-ref b 0))
 
 ; atomic-ref: any/c -> atomic-ref?
 ; constructs an atomic reference holding some initial value

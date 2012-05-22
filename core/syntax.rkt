@@ -26,28 +26,34 @@
 				f.fragment ...)))
 
 (define-syntax-class reagent-clause
-  #:literals (cas! choice read-match)
+  #:literals (cas! choice read-match before)
   #:description "define-reagent clause"
   #:attributes ((prelude 1) fragment)
   (pattern (cas! atomic-ref:expr old-value:expr new-value:expr)
-           #:with bv (generate-temporary 'bv)
-           #:attr fragment #'(cas!-fragment bv old-value new-value)
+           #:with (bv bx) (generate-temporaries '(bv bx))
+           #:attr fragment #'(cas!-fragment bx old-value new-value)
            #:with (prelude ...) 
 	   #'((define bv atomic-ref)
 	      (unless (atomic-ref? bv)
-		(error 'cas! "atomic-ref expected, but got" bv))))
+		(error 'cas! "atomic-ref expected, but got" bv))
+              (define bx (atomic-ref-box bv))))
 
   (pattern (choice [r1:reagent-body] [r2:reagent-body])
            #:attr fragment #'(choose-fragment r1.fragment r2.fragment)
            #:with (prelude ...) #'(r1.prelude ... r2.prelude ...))
 
   (pattern (read-match atomic-ref:expr clause:read-match-clause ...)
-           #:with bv (generate-temporary 'bv)
-           #:attr fragment #'(read-match-fragment bv clause.fragment ...)
+           #:with (bv bx) (generate-temporaries '(bv bx))
+           #:attr fragment #'(read-match-fragment bx clause.fragment ...)
            #:with (prelude ...)
 	   #'((define bv atomic-ref)
 	      (unless (atomic-ref? bv)
-		(error 'cas! "atomic-ref expected, but got" bv))))
+		(error 'cas! "atomic-ref expected, but got" bv))
+              (define bx (atomic-ref-box bv))))
+  
+  (pattern (before e:expr ...)
+           #:attr fragment #'(continue-with (void))
+           #:with (prelude ...) #'(e ...))
   
   (pattern e:expr
 	   #:attr fragment #'(continue-with e)

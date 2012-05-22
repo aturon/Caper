@@ -19,12 +19,13 @@
   (tstack (atomic-ref null)))
 
 (define-reagent (push s x)
+  (before (define c (mcons x #f)))
   (read-match (tstack-head s)
-    [xs (update-to! (cons x xs))]))
+    [xs (unsafe-set-mcdr! c xs) (update-to! c)]))
 
 (define-reagent (pop s failure-result)
   (read-match (tstack-head s)
-    [(cons x xs) (update-to! xs) x]
+    [(mcons x xs) (update-to! xs) x]
     [_ (if (procedure? failure-result) (failure-result) failure-result)]))
 
 (define (push! s x) (react (push s x)))

@@ -6,7 +6,7 @@
          (for-syntax "syntax.rkt" racket/base syntax/parse unstable/syntax racket/syntax racket/pretty)
 	 (for-template racket/base))
 
-(provide define-reagent cas! read-match update-to! react pmacro)
+(provide define-reagent cas! read-match update-to! react pmacro before)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Core reagent implementation
@@ -29,11 +29,12 @@
 (define-syntax (react stx)
   (syntax-parse stx
     [(_ (name:id actual ...))
-     (cond [(reagent? (syntax-local-value #'name (lambda () #f))) => 
-	    (lambda (r)
-	      #`(let-values ([#,(reagent-formals r) (values actual ...)])
-                  #,@(reagent-prelude r)
-		  (close-fragment #,(reagent-fragment r))))]
+     (define r (syntax-local-value #'name (λ () #f)))
+     (cond [(reagent? r) 
+            #`((λ #,(reagent-formals r)
+                 #,@(reagent-prelude r)
+                 (close-fragment #,(reagent-fragment r)))
+               actual ...)]
 	   [else
 	    ;; FIXME: this introduces an extra eta-expansion; is that a problem?
 	    #'(close-fragment (reflect-fragment (name actual ...)))])]))
@@ -124,6 +125,7 @@
 
 |#
 
-(pmacro (define-reagent (push2 s x)
+(define-reagent (push2 s x)
   (read-match (tstack-head s)
-    [xs (update-to! (cons x xs))])))
+    [xs (update-to! (cons x xs))]))
+(pmacro (react (push2 s x)))

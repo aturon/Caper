@@ -23,4 +23,4 @@
        ...
        (provide id ...))]))
 
-(provide-keyword cas! choice read-match update-to!)
+(provide-keyword cas! choice read-match update-to! before)
