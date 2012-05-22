@@ -6,14 +6,37 @@
          (for-syntax "syntax.rkt" racket/base syntax/parse unstable/syntax racket/syntax racket/pretty)
 	 (for-template racket/base))
 
-(provide define-reagent cas! read-match update-to! pmacro)
+(provide define-reagent cas! read-match update-to! react pmacro)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Core reagent implementation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-simple-macro (define-reagent header:expr body:reagent-body)
-  (define header (let () body.prelude ... (close-fragment body.fragment))))
+(begin-for-syntax
+ (struct reagent (formals prelude fragment)
+	 #:property prop:procedure
+	 (lambda (r stx) 
+	   (syntax-parse stx
+	      [(f actuals ...) 
+	       #`(#,(datum->syntax stx '#%app) f actuals ...)]
+	      [_ #`(lambda #,(reagent-formals r)
+                     #,@(reagent-prelude r)
+		     (reify-fragment #,(reagent-fragment r)))]))))
+
+(define-simple-macro (define-reagent (name:id arg ...) body:reagent-body)
+  (define-syntax name (reagent (list #'arg ...) #'(body.prelude ...) #'body.fragment)))
+
+(define-syntax (react stx)
+  (syntax-parse stx
+    [(_ (name:id actual ...))
+     (cond [(reagent? (syntax-local-value #'name (lambda () #f))) => 
+	    (lambda (r)
+	      #`(let-values ([#,(reagent-formals r) (values actual ...)])
+                  #,@(reagent-prelude r)
+		  (close-fragment #,(reagent-fragment r))))]
+	   [else
+	    ;; FIXME: this introduces an extra eta-expansion; is that a problem?
+	    #'(close-fragment (reflect-fragment (name actual ...)))])]))
 
 (define (cleanup s)  
   (match s
@@ -32,8 +55,19 @@
                              #'e 
                              (list #'define-reagent #'sequence #'close-fragment #'cas!-fragment
                                    #'with-retry-handler #'with-block-handler #'bind #'with-cas
-                                   #'choose-fragment #'read-match-fragment
-                                   #'retry #'block #'continue-with #'static-kcas! #'do-kcas!))))))]))
+                                   #'choose-fragment #'read-match-fragment #'react
+                                   #'retry #'block #'continue-with #'static-kcas! #'do-kcas!
+				   #'reflect-fragment #'reify-fragment))))))]))
+
+(pmacro
+ (begin
+   (define-reagent (push s x)
+     (read-match s
+       [xs (update-to! (cons x xs))]))
+   (react (push some-stack some-arg))
+   (define push-alt push)
+   (react (push-alt some-stack some-arg))))
+
 
 #|
 (define b '())
@@ -44,9 +78,10 @@
   (cas! b o n)
   (cas! b o n))
 
-
 (pmacro
- (define-reagent (r x)))
+ (begin
+   (define-reagent (r x))
+   (react (r z))))
 
 (pmacro
  (define-reagent (r x)
@@ -71,9 +106,11 @@
     ((cas! box old new)))))
 
 (pmacro
- (define-reagent (push s x)
-   (read-match s
-     [xs (update-to! (cons x xs))])))
+ (begin
+   (define-reagent (push s x)
+     (read-match s
+       [xs (update-to! (cons x xs))]))
+   (react (push some-stack some-arg))))
 
 (pmacro
  (define-reagent (pop s)
@@ -84,14 +121,6 @@
 (pmacro
  (define-reagent (r x)
    x))
-|#
-
-#|
-
-; eventually we'll store something like this for composition
-(struct reagent (fragment)
-  #:property prop:procedure
-             (lambda (r) ... (reagent-fragment r)))
 
 |#
 
