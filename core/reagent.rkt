@@ -6,7 +6,7 @@
          (for-syntax "syntax.rkt" racket/base syntax/parse unstable/syntax racket/syntax racket/pretty)
 	 (for-template racket/base))
 
-(provide define-reagent cas! read-match update-to! react pmacro before)
+(provide define-reagent cas! read-match update-to! react pmacro before block)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Core reagent implementation

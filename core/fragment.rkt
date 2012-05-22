@@ -71,7 +71,7 @@
     [(_ bx-e cl:clause ...)
      #'(let* ([b bx-e]
               [ov (unsafe-unbox* b)])
-         (match ov cl.mclause ...))]))
+         (match ov cl.mclause ... [_ (block)]))]))
 
 (define-simple-macro (bind (x:id e:expr) body ...)
   (syntax-parameterize ([continue-with 
