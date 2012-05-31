@@ -2,7 +2,7 @@
 
 ; Provides keywords and syntax classes for reagents
 
-(require syntax/parse racket/syntax
+(require syntax/parse racket/syntax "static.rkt"
 	 (for-template racket/base "fragment.rkt" "keywords.rkt" "atomic-ref.rkt"))
 (provide reagent-clause reagent-body)
 
@@ -54,6 +54,15 @@
   (pattern (before e:expr ...)
            #:attr fragment #'(continue-with (void))
            #:with (prelude ...) #'(e ...))
+  
+  (pattern (dynamic e:expr)
+           #:with (prelude ...) #'()
+           #:attr fragment #'(reflect-fragment e))
+  
+  (pattern [(~var r (static reagent? "static reagent")) args:expr ...]
+           #:with (formals ...) (reagent-formals (attribute r.value))
+           #:with (prelude ...) (reagent-prelude (attribute r.value))
+           #:attr fragment #`(let ([formals args] ...) #,(reagent-fragment (attribute r.value))))
   
   (pattern e:expr
 	   #:attr fragment #'(continue-with e)

@@ -1,27 +1,17 @@
 #lang racket/base
 
-(require "syntax.rkt" "keywords.rkt" "fragment.rkt"
+(require "syntax.rkt" "keywords.rkt" "fragment.rkt"         
 	 syntax/parse/define
 	 macro-debugger/expand racket/stxparam racket/match racket/pretty
-         (for-syntax "syntax.rkt" racket/base syntax/parse unstable/syntax racket/syntax racket/pretty)
+         (for-syntax "syntax.rkt" "static.rkt" racket/base syntax/parse unstable/syntax racket/syntax racket/pretty)
 	 (for-template racket/base))
 
-(provide define-reagent cas! read-match update-to! react pmacro before block)
+(provide define-reagent cas! read-match update-to! react pmacro before block
+         (for-syntax ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Core reagent implementation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(begin-for-syntax
- (struct reagent (formals prelude fragment)
-	 #:property prop:procedure
-	 (lambda (r stx) 
-	   (syntax-parse stx
-	      [(f actuals ...) 
-	       #`(#,(datum->syntax stx '#%app) f actuals ...)]
-	      [_ #`(lambda #,(reagent-formals r)
-                     #,@(reagent-prelude r)
-		     (reify-fragment #,(reagent-fragment r)))]))))
 
 (define-simple-macro (define-reagent (name:id arg ...) body:reagent-body)
   (define-syntax name (reagent (list #'arg ...) #'(body.prelude ...) #'body.fragment)))
