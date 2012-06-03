@@ -23,7 +23,7 @@
   (read-match (tstack-head s)
     [xs (unsafe-set-mcdr! c xs) (update-to! c)]))
 
-(define-reagent (pop s failure-result)
+(define-reagent (pop s failure-result)  
   (read-match (tstack-head s)
     [(mcons x xs) (update-to! xs) x]
     [_ (if (procedure? failure-result) (failure-result) failure-result)]))
@@ -37,4 +37,7 @@
 (define (pop/block! s) (react (pop/block s)))
 (define (pop! s [failure-result 
 		 (λ () (raise-type-error 'pop "non-empty stack" s))]) 
-  (react (pop s failure-result)))
+  (reagent
+   (read-match (tstack-head s)
+    [(mcons x xs) (update-to! xs) x]
+    [_ (if (procedure? failure-result) (failure-result) failure-result)])))
