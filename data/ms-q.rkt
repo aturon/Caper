@@ -9,26 +9,30 @@
 (define (make-queue)
   (define n (node #f #f))
   (queue (atomic-ref n) (atomic-ref n)))
-#;
+
+(define-match-expander aref
+  (λ (stx)
+    (syntax-case stx ()
+      [(_ p) #'(app atomic-ref-read p)])))
+
 (define-reagent (try-deq q)
-  (read-match q
-    [(node _ r) (read-match r [(and n (node x _))
-                               (update-to! n)
-                               x])]
+  (read-match (queue-head q)
+    [(node _ (aref (and n (node x _)))) 
+     (update-to! n)]
     [emp (update-to! emp) #f]))
 
 (define (find q)
   (let loop ()
-    (reagent (read-match (queue-tail q)
-               [(and ov (node _ (and r (app atomic-ref-read #f))))
-                r]
-               [(and ov (node _ (and r (app atomic-ref-read nv))))
-                (reagent (cas! (queue-tail q) ov nv))
-                (loop)]))))
+    (reagent 
+     (read-match (queue-tail q)
+       [(node _ (and r (aref #f)))
+        r]
+       [(and ov (node _ (aref nv)))
+        (reagent (cas! (queue-tail q) ov nv))
+        (loop)]))))
 
-(define-reagent (enq q x)
-  (define r (find q))
-  (cas! r #f x)
+(define-reagent (enq q x)  
+  (cas! (find q) #f x)
   ;; post-commit here
   )
 
