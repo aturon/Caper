@@ -30,9 +30,10 @@
 	    ;; FIXME: this introduces an extra eta-expansion; is that a problem?
 	    #'(close-fragment (reflect-fragment (name actual ...)))])]))
 
-(define-simple-macro (-reagent body:reagent-body)
-  (begin (define-reagent (r) . body)
-         (react (r))))
+(define-simple-macro (-reagent body ...)
+  (let () 
+    (define-reagent (r) body ...)
+    (react (r))))
 
 (provide (rename-out [-reagent reagent]))
 

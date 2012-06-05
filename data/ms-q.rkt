@@ -23,13 +23,12 @@
 
 (define (find q)
   (let loop ()
-    (reagent 
-     (read-match (queue-tail q)
-       [(node _ (and r (aref #f)))
-        r]
-       [(and ov (node _ (aref nv)))
-        (reagent (cas! (queue-tail q) ov nv))
-        (loop)]))))
+    (match (reagent (read (queue-tail q)))
+      [(node _ (and r (aref #f)))
+       r]
+      [(and ov (node _ (aref nv)))
+       (reagent (cas! (queue-tail q) ov nv))
+       (loop)])))
 
 (define-reagent (enq q x)  
   (cas! (find q) #f x)
