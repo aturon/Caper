@@ -18,7 +18,8 @@
 (define-reagent (try-deq q)
   (read-match (queue-head q)
     [(node _ (aref (and n (node x _)))) 
-     (update-to! n)]
+     (update-to! n) 
+     x]
     [emp (update-to! emp) #f]))
 
 (define (find q)
