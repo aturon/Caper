@@ -6,8 +6,10 @@
 	 caper/core/atomic-ref)
 (provide make-queue enq deq enq! deq!)
 
-; NB: next is of type atomic-ref(#f U node)
+; next is of type atomic-ref(#f U node)
 (struct node (data next))
+
+; AT: should we mark this immutable?
 (struct queue (head tail))
 
 (define (internal-make-node data)
@@ -30,16 +32,18 @@
     [emp (if (procedure? failure-result) (failure-result) failure-result)]))
 
 (define (find q)
+  (define tail-aref (queue-tail q))
   (let loop ()
-    (match (atomic-ref-read (queue-tail q))
+    (match (atomic-ref-read tail-aref)
       [(node _ (and r (aref #f)))
        r]
       [(and ov (node _ (aref nv)))
-       (reagent (cas! (queue-tail q) ov nv))
+       (atomic-ref-cas! tail-aref ov nv)
        (loop)])))
 
-(define-reagent (enq q x)  
-  (cas! (find q) #f (internal-make-node x))
+(define-reagent (enq q x)
+  (before (define n (internal-make-node x)))
+  (cas! (find q) #f n)
   ;; post-commit here
   )
 
