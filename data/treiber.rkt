@@ -2,8 +2,10 @@
 
 ; a reagent implementation of Treiber's stack, using cons cells
 
-(require racket/future racket/performance-hint racket/unsafe/ops caper/core/reagent caper/core/atomic-ref) 
-(provide make-treiber-stack push pop push! pop!)
+(require racket/future racket/performance-hint 
+	 racket/unsafe/ops caper/core/reagent 
+	 caper/core/atomic-ref) 
+(provide make-treiber-stack push pop push! pop! pop/block pop/block!)
 
 (struct tstack (head)
   #:property prop:custom-write
@@ -36,8 +38,5 @@
 (define (push! s x) (react (push s x)))
 (define (pop/block! s) (react (pop/block s)))
 (define (pop! s [failure-result 
-		 (λ () (raise-type-error 'pop "non-empty stack" s))]) 
-  (reagent
-   (read-match (tstack-head s)
-    [(mcons x xs) (update-to! xs) x]
-    [_ (if (procedure? failure-result) (failure-result) failure-result)])))
+		 (λ () (raise-type-error 'pop! "non-empty stack" s))])
+  (react (pop s failure-result)))
