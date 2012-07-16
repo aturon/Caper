@@ -59,6 +59,7 @@
 				   #'reflect-fragment #'reify-fragment))))))]))
 
 
+#|
 (pmacro
  (begin
    (define-reagent (push s x)
@@ -69,7 +70,6 @@
    (react (push-alt some-stack some-arg))))
 
 
-#|
 (define b '())
 (define o '())
 (define n '())
@@ -122,9 +122,9 @@
  (define-reagent (r x)
    x))
 
-|#
-
 (define-reagent (push2 s x)
   (read-match (tstack-head s)
     [xs (update-to! (cons x xs))]))
 (pmacro (react (push2 s x)))
+
+|#
