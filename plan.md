@@ -1,11 +1,11 @@
 Short-term
 
-x Write tests for stack and queue [Aaron]
-x Handle dynamic KCAS correctly [Aaron]
-x Add postludes 
+- DONE: Write tests for stack and queue [Aaron]
+- DONE: Handle dynamic KCAS correctly [Aaron]
+- DONE: Add postludes 
 - and use them in MSQ [Aaron]
 - Check that preludes work correctly with dynamic reagents
-- `define' clauses [Sam]
+- `define'` clauses [Sam]
 
 Nonblocking algorithms to tackle
 
