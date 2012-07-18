@@ -5,7 +5,7 @@ Short-term
 - DONE: Add postludes 
 - and use them in MSQ [Aaron]
 - Check that preludes work correctly with dynamic reagents
-- `define'` clauses [Sam]
+- `define` clauses [Sam]
 
 Nonblocking algorithms to tackle
 
