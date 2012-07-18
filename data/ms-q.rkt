@@ -42,10 +42,10 @@
        (loop)])))
 
 (define-reagent (enq q x)
-  (before (define n (internal-make-node x)))
+  (prelude (define n (internal-make-node x)))
   (cas! (find q) #f n)
-  ;; post-commit here
-  )
+;  (postlude (atomic-ref-cas! (queue-tail q) n))
+)
 
 (define (enq! q x) (react (enq q x)))
 (define (deq! q [failure-result 

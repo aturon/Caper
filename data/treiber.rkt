@@ -21,7 +21,7 @@
   (tstack (atomic-ref null)))
 
 (define-reagent (push s x)
-  (before (define c (mcons x null)))
+  (prelude (define c (mcons x null)))
   (read-match (tstack-head s)
     [xs (unsafe-set-mcdr! c xs) (update-to! c)]))
 

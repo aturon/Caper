@@ -14,6 +14,7 @@
 	 sequence
 	 choose-fragment
 	 read-match-fragment
+	 with-postlude
 	 reflect-fragment
 	 close-fragment
 	 reify-fragment)
@@ -27,11 +28,20 @@
 (define-syntax-parameter retry (syntax-rules ())) ; transient failure
 (define-syntax-parameter block (syntax-rules ())) ; permanent failure
 
-(define-syntax-parameter kcas-list '())
+(define-syntax-parameter kcas-list '()) ; CAS clauses to perform
+(define-syntax-parameter postlude-action #'(void)) ; postlude action to perform
 
 (define-simple-macro (with-cas (box ov nv) body ...)
   (syntax-parameterize ([kcas-list (cons (list #'box #'ov #'nv) 
 					 (syntax-parameter-value #'kcas-list))])
+    body ...))
+
+(define-simple-macro (with-dyn-kcas dyn body ...)
+  (syntax-parameterize ([kcas-list (cons #'dyn (syntax-parameter-value #'kcas-list))])
+    body ...))
+
+(define-simple-macro (with-postlude post body ...)
+  (syntax-parameterize ([postlude-action (begin (syntax-parameter-value #'postlude-action) #'post)])
     body ...))
 
 (define-simple-macro (with-retry-handler handler body ...)
@@ -101,14 +111,19 @@
 (define-simple-macro (reify-fragment f)
   (λ (k retry-k block-k)
     (syntax-parameterize
-     ([continue-with (syntax-parser [(_ result) #`(k result #,(syntax-parameter-value #'kcas-list))])]
+     ([continue-with (syntax-parser [(_ result) 
+				     #`(k result 
+					  (flatten-mixed-kcas #,(syntax-parameter-value #'kcas-list))
+					  (lambda () #,(syntax-parameter-value #'postlude-action)))])]
       [retry (syntax-parser [(_) #'(retry-k)])]
       [block (syntax-parser [(_) #'(block-k)])])
      f)))
 
 (define-simple-macro (reflect-fragment runtime-fragment)
-  (let ([k       (λ (result additional-kcas-list) ;; FIXME: accumulate dynamic KCAS clauses
-		    (continue-with result))]
+  (let ([k       (λ (result additional-kcas-list additional-postlude) 
+		    (with-dyn-kcas additional-kcas-list 
+		     (with-postlude (additional-postlude)
+		      (continue-with result))))]
 	[retry-k (λ () (retry))]
 	[block-k (λ () (block))])
     (runtime-fragment k retry-k block-k)))
@@ -118,13 +133,17 @@
   (syntax-parse stx
     [(_) #`(static-kcas! #,@(syntax-parameter-value #'kcas-list))]))
 
+(define-syntax (do-postlude! stx)
+  (syntax-parse stx
+    [(_) (syntax-parameter-value #'postlude-action)]))
+
 (define-syntax (close-fragment stx)
-  (define/with-syntax (retry-loop result) (generate-temporaries '(retry-loop result)))
   (syntax-parse stx
     [(_ f) #`(let retry-loop ()
 	       (with-retry-handler (retry-loop)
 		(with-block-handler (retry-loop)
 		 (bind (result f) ;; FIXME: delay this allocation until after the kcas
 		   (if (do-kcas!)
-		       result
+		       (begin (do-postlude!) 
+			      result)
 		       (retry))))))]))

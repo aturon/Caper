@@ -11,8 +11,8 @@
          atomic-ref-box ;; internal library use only!
 	 static-kcas!   ;; internal library use only!
          unsafe-atomic-ref-box  ;; internal use only!
-         kcas-item
-         kcas!)
+	 flatten-mixed-kcas
+)
 
 ; internal, generative value for kcas acquisition of an atomic-ref
 (define locked (gensym))
@@ -84,11 +84,20 @@
          ['() (commit items)]
          [unacquired (roll-back-until items unacquired)])]))
 
+(define-syntax (flatten-mixed-kcas stx)
+  (syntax-parse stx
+    [(_) #'()]
+    [(_ (b ov nv) . rest)
+     #'(cons (kcas-item b ov nv) (flatten-mixed-kcas rest))]
+    [(_ dyn . rest)
+     #'(list-append dyn (flatten-mixed-kcas rest))]))
+
 ; for internal use only
-(define-syntax (static-kcas! stx)
+; not currently making much use of static information
+(define-syntax (static-kcas! stx)  
   (syntax-parse stx
     [(_) #'#t]
     [(_ (b ov nv))
      #'(unsafe-box*-cas! b ov nv)]
-    [(_ (b ov nv) ...)
-     #'(kcas! (list (kcas-item b ov nv) ...))]))
+    [(_ clause ...)
+     #'(kcas! (flatten-mixed-kcas clause ...))]))

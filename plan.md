@@ -1,15 +1,34 @@
 Short-term
 
-- Write tests for stack and queue [Aaron]
-- Handle dynamic KCAS correctly [Aaron]
-- Add postludes and use them in MSQ [Aaron]
+x Write tests for stack and queue [Aaron]
+x Handle dynamic KCAS correctly [Aaron]
+x Add postludes 
+- and use them in MSQ [Aaron]
+- Check that preludes work correctly with dynamic reagents
 - `define' clauses [Sam]
+
+Nonblocking algorithms to tackle
+
+- sorted linked lists
+- skiplists
+- skipmaps
+- hashmaps
+- bags
 
 Medium-term
 
-- Many more lock-free algorithms
-- Channels, blocking
+- Blocking
+- Channels
+- CML API
+- Joins API
+- KCAS implementations
+
+Blocking algorithms to tackle
+
+- basic synchronizers
+- blocking versions of data structure functions
 
 Long-term
 
 - Integrate with locking
+- Full application, e.g. music synthesis

@@ -6,7 +6,7 @@
          (for-syntax "syntax.rkt" "static.rkt" racket/base syntax/parse unstable/syntax racket/syntax racket/pretty)
 	 (for-template racket/base))
 
-(provide define-reagent cas! read-match update-to! react pmacro before block
+(provide define-reagent cas! read-match update-to! react pmacro prelude postlude block
          (for-syntax ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -36,6 +36,10 @@
     (react (r))))
 
 (provide (rename-out [-reagent reagent]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Debugging
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define (cleanup s)  
   (match s
@@ -68,7 +72,6 @@
    (react (push some-stack some-arg))
    (define push-alt push)
    (react (push-alt some-stack some-arg))))
-
 
 (define b '())
 (define o '())

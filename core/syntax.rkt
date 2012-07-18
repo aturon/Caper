@@ -26,7 +26,7 @@
 				f.fragment ...)))
 
 (define-syntax-class reagent-clause
-  #:literals (cas! choice read-match before)
+  #:literals (cas! choice read-match)
   #:description "define-reagent clause"
   #:attributes ((prelude 1) fragment)
   (pattern (cas! atomic-ref:expr old-value:expr new-value:expr)
@@ -51,9 +51,13 @@
 		(error 'cas! "atomic-ref expected, but got" bv))
               (define bx (atomic-ref-box bv))))
   
-  (pattern (before e:expr ...)
+  (pattern ((~literal prelude) e:expr ...)
            #:attr fragment #'(continue-with (void))
            #:with (prelude ...) #'(e ...))
+
+  (pattern ((~literal postlude) e:expr ...)
+	   #:attr fragment #'(with-postlude (begin e ...) (continue-with (void)))
+           #:with (prelude ...) #'())
   
   (pattern (dynamic e:expr)
            #:with (prelude ...) #'()
