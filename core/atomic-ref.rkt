@@ -86,11 +86,11 @@
 
 (define-syntax (flatten-mixed-kcas stx)
   (syntax-parse stx
-    [(_) #'()]
-    [(_ (b ov nv) . rest)
-     #'(cons (kcas-item b ov nv) (flatten-mixed-kcas rest))]
-    [(_ dyn . rest)
-     #'(list-append dyn (flatten-mixed-kcas rest))]))
+    [(_) #'null]
+    [(_ (b ov nv) rest ...)
+     #'(cons (kcas-item b ov nv) (flatten-mixed-kcas rest ...))]
+    [(_ dyn rest ...)
+     #'(append dyn (flatten-mixed-kcas rest ...))]))
 
 ; for internal use only
 ; not currently making much use of static information

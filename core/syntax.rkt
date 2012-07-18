@@ -26,7 +26,7 @@
 				f.fragment ...)))
 
 (define-syntax-class reagent-clause
-  #:literals (cas! choice read-match)
+  #:literals (cas! choice read-match dynamic)
   #:description "define-reagent clause"
   #:attributes ((prelude 1) fragment)
   (pattern (cas! atomic-ref:expr old-value:expr new-value:expr)
@@ -65,8 +65,11 @@
   
   (pattern [(~var r (static reagent? "static reagent")) args:expr ...]
            #:with (formals ...) (reagent-formals (attribute r.value))
-           #:with (prelude ...) (reagent-prelude (attribute r.value))
-           #:attr fragment #`(let ([formals args] ...) #,(reagent-fragment (attribute r.value))))
+           #:with (prelude ...) #'()
+           ;; the prelude of `r` can refer to `formals`, so it must go *inside* the `let`
+           ;; TODO: can we discover optimization opportunities for lifting the prelude higher?
+           #:with (p ...) (reagent-prelude (attribute r.value))           
+           #:attr fragment #`(let ([formals args] ...) p ... #,(reagent-fragment (attribute r.value))))
   
   (pattern e:expr
 	   #:attr fragment #'(continue-with e)

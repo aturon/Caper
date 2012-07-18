@@ -4,7 +4,7 @@ Short-term
 - DONE: Handle dynamic KCAS correctly [Aaron]
 - DONE: Add postludes 
 - and use them in MSQ [Aaron]
-- Check that preludes work correctly with dynamic reagents
+- DONE: Check that preludes work correctly with dynamic reagents
 - `define` clauses [Sam]
 
 Nonblocking algorithms to tackle

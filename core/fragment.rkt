@@ -108,12 +108,13 @@
 	 (with-retry-handler (alt-with-retry)
           (with-block-handler (alt) f1)))]))
 
-(define-simple-macro (reify-fragment f)
+(define-simple-macro (reify-fragment prelude f)
   (λ (k retry-k block-k)
+    prelude
     (syntax-parameterize
      ([continue-with (syntax-parser [(_ result) 
 				     #`(k result 
-					  (flatten-mixed-kcas #,(syntax-parameter-value #'kcas-list))
+					  (flatten-mixed-kcas #,@(syntax-parameter-value #'kcas-list))
 					  (lambda () #,(syntax-parameter-value #'postlude-action)))])]
       [retry (syntax-parser [(_) #'(retry-k)])]
       [block (syntax-parser [(_) #'(block-k)])])

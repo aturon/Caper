@@ -23,4 +23,4 @@
        ...
        (provide id ...))]))
 
-(provide-keyword cas! choice read-match update-to! prelude postlude)
+(provide-keyword cas! choice read-match update-to! prelude postlude dynamic)

@@ -16,24 +16,11 @@
 (define-simple-macro (define-reagent (name:id arg ...) body:reagent-body)
   (define-syntax name (reagent (list #'arg ...) #'(body.prelude ...) #'body.fragment)))
 
-(define-syntax (react stx)
-  (syntax-parse stx
-    [(_ (name:id actual ...))
-     (define r (syntax-local-value #'name (λ () #f)))
-     (cond [(reagent? r)
-            ;; this eta-expansion is free for optional arguments, but not for keywords
-            #`((λ #,(reagent-formals r)
-                 #,@(reagent-prelude r)
-                 (close-fragment #,(reagent-fragment r)))
-               actual ...)]
-	   [else
-	    ;; FIXME: this introduces an extra eta-expansion; is that a problem?
-	    #'(close-fragment (reflect-fragment (name actual ...)))])]))
+(define-simple-macro (react body:reagent-body)
+  (begin body.prelude ... (close-fragment body.fragment)))
 
 (define-simple-macro (-reagent body ...)
-  (let () 
-    (define-reagent (r) body ...)
-    (react (r))))
+  (let () (define-reagent (r) body ...) (r)))
 
 (provide (rename-out [-reagent reagent]))
 
