@@ -53,6 +53,15 @@
   (syntax-parameterize ([block (syntax-parser [(block) #'handler])])
     body ...))
 
+#;
+(define-syntax (when-offer-fragment stx)
+  (syntax-parse stx
+    [(_ (offer-formal) body ...)
+     (match (syntax-value #'current-offer)
+       [#f #'(continue-with (void))]
+       [offer-actual #`(let-syntax ([offer-formal (syntax-parser _ #'offer-actual)])
+			 (begin body ... (continue-with (void))))])]))
+
 (define-simple-macro (cas!-fragment bx-e ov-e nv-e)
   (let ([b bx-e]
 	[ov ov-e]
