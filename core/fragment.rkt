@@ -28,6 +28,7 @@
 (define-syntax-parameter retry (syntax-rules ())) ; transient failure
 (define-syntax-parameter block (syntax-rules ())) ; permanent failure
 
+(define-syntax-parameter current-offer #f) ; the offer when in offer mode (#f if in non-blocking mode)
 (define-syntax-parameter kcas-list '()) ; CAS clauses to perform
 (define-syntax-parameter postlude-action #'(void)) ; postlude action to perform
 
@@ -52,14 +53,11 @@
   (syntax-parameterize ([block (syntax-parser [(block) #'handler])])
     body ...))
 
-(define-syntax (cas!-fragment stx)
-  (define/with-syntax (b ov nv) (generate-temporaries '(b ov nv)))
-  (syntax-parse stx
-    [(_ bx-e ov-e nv-e)
-     #'(let ([b bx-e]
-	     [ov ov-e]
-	     [nv nv-e])
-	 (with-cas (b ov nv) (continue-with (void))))]))
+(define-simple-macro (cas!-fragment bx-e ov-e nv-e)
+  (let ([b bx-e]
+	[ov ov-e]
+	[nv nv-e])
+    (with-cas (b ov nv) (continue-with (void)))))
 
 (define-syntax (read-match-fragment stx)
   (define/with-syntax (b ov nv) (generate-temporaries '(bx ov nv)))
@@ -98,15 +96,12 @@
     [(_ f1 f ...)
      #'(bind (_ f1) (sequence f ...))]))
 
-(define-syntax (choose-fragment stx)
-  (define/with-syntax (alt alt-with-retry) (generate-temporaries '(alt alt-with-retry)))
-  (syntax-parse stx
-    [(_ f1 f2)
-     #'(let* ([retry*         (λ () (retry))]
-              [alt            (λ () f2)]              
-              [alt-with-retry (λ () (with-block-handler (retry*) f2))])
-	 (with-retry-handler (alt-with-retry)
-          (with-block-handler (alt) f1)))]))
+(define-simple-macro (choose-fragment f1 f2)
+  (let* ([retry*         (λ () (retry))]
+	 [alt            (λ () f2)]              
+	 [alt-with-retry (λ () (with-block-handler (retry*) f2))])
+    (with-retry-handler (alt-with-retry)
+     (with-block-handler (alt) f1))))
 
 (define-simple-macro (reify-fragment prelude f)
   (λ (k retry-k block-k)
@@ -138,13 +133,11 @@
   (syntax-parse stx
     [(_) (syntax-parameter-value #'postlude-action)]))
 
-(define-syntax (close-fragment stx)
-  (syntax-parse stx
-    [(_ f) #`(let retry-loop ()
-	       (with-retry-handler (retry-loop)
-		(with-block-handler (retry-loop)
-		 (bind (result f) ;; FIXME: delay this allocation until after the kcas
-		   (if (do-kcas!)
-		       (begin (do-postlude!) 
-			      result)
-		       (retry))))))]))
+(define-simple-macro (close-fragment f)
+  (let retry-loop ()
+    (with-retry-handler (retry-loop)
+     (with-block-handler (retry-loop)
+      (bind (result f) ;; FIXME: delay this allocation until after the kcas
+	    (if (do-kcas!)
+		(begin (do-postlude!) result)
+		(retry)))))))

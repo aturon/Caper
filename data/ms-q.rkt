@@ -51,4 +51,3 @@
 (define (deq! q [failure-result 
 		 (λ () (raise-type-error 'deq! "non-empty queue" q))])
   (react (deq q failure-result)))
-  
