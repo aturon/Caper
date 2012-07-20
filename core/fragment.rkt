@@ -28,7 +28,6 @@
 (define-syntax-parameter retry (syntax-rules ())) ; transient failure
 (define-syntax-parameter block (syntax-rules ())) ; permanent failure
 
-(define-syntax-parameter current-offer #f) ; the offer when in offer mode (#f if in non-blocking mode)
 (define-syntax-parameter kcas-list '()) ; CAS clauses to perform
 (define-syntax-parameter postlude-action #'(void)) ; postlude action to perform
 
@@ -53,15 +52,9 @@
   (syntax-parameterize ([block (syntax-parser [(block) #'handler])])
     body ...))
 
-#;
-(define-syntax (when-offer-fragment stx)
-  (syntax-parse stx
-    [(_ (offer-formal) body ...)
-     (match (syntax-value #'current-offer)
-       [#f #'(continue-with (void))]
-       [offer-actual #`(let-syntax ([offer-formal (syntax-parser _ #'offer-actual)])
-			 (begin body ... (continue-with (void))))])]))
-
+(define-syntax-paramter when-offer-fragment
+  (syntax-parser (_ (_) _ ...) #'(continue-with (void))))
+  
 (define-simple-macro (cas!-fragment bx-e ov-e nv-e)
   (let ([b bx-e]
 	[ov ov-e]
@@ -143,10 +136,23 @@
     [(_) (syntax-parameter-value #'postlude-action)]))
 
 (define-simple-macro (close-fragment f)
-  (let retry-loop ()
-    (with-retry-handler (retry-loop)
-     (with-block-handler (retry-loop)
+  (let without-offer ()
+    (define (with-offer)
+      (define offer #f) ; FIXME
+      (with-retry-handler (with-offer)
+       (with-block-handler (with-offer)
+        (syntax-parameterize
+         ([when-offer-fragment (syntax-parser (_ (offer-formal) body ...)
+                                              #'(let ([offer-formal offer])
+                                                  body ...
+                                                  (continue-with (void))))])
+         (bind (result f) ;; FIXME: delay this allocation until after the kcas
+               (if (do-kcas!)
+                   (begin (do-postlude!) result)
+                   (retry)))))))
+    (with-retry-handler (without-offer)
+     (with-block-handler (with-offer)
       (bind (result f) ;; FIXME: delay this allocation until after the kcas
-	    (if (do-kcas!)
-		(begin (do-postlude!) result)
-		(retry)))))))
+            (if (do-kcas!)
+                (begin (do-postlude!) result)
+                (retry)))))))
