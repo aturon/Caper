@@ -6,6 +6,8 @@ Short-term
 - and use them in MSQ [Aaron]
 - DONE: Check that preludes work correctly with dynamic reagents
 - `define` clauses [Sam]
+- rethink `prelude` syntax wrt binders, i.e., only allow `prelude`
+  as the first clause
 
 Nonblocking algorithms to tackle
 

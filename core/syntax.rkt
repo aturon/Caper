@@ -48,7 +48,7 @@
            #:with (prelude ...)
 	   #'((define bv atomic-ref)
 	      (unless (atomic-ref? bv)
-		(error 'cas! "atomic-ref expected, but got" bv))
+		(error 'read-match "atomic-ref expected, but got" bv))
               (define bx (atomic-ref-box bv))))
   
   (pattern ((~literal prelude) e:expr ...)

@@ -20,7 +20,7 @@
 	 reify-fragment)
 
 ;; for debugging only
-(provide with-cas with-retry-handler with-block-handler retry block continue-with
+(provide with-cas with-retry-handler with-block-handler retry block continue-with with-offer
          static-kcas! bind do-kcas!)
 
 ; the continuation environment
@@ -28,6 +28,7 @@
 (define-syntax-parameter retry (syntax-rules ())) ; transient failure
 (define-syntax-parameter block (syntax-rules ())) ; permanent failure
 
+(define-syntax-parameter current-offer #f) ; syntax for the offer, or #f if there is none
 (define-syntax-parameter kcas-list '()) ; CAS clauses to perform
 (define-syntax-parameter postlude-action #'(void)) ; postlude action to perform
 
@@ -52,22 +53,27 @@
   (syntax-parameterize ([block (syntax-parser [(block) #'handler])])
     body ...))
 
-(define-syntax-parameter when-offer-fragment
-  (syntax-parser [(_ (_) _ ...) #'(continue-with (void))]))
+(define-simple-macro (with-offer offer body ...)
+  (syntax-parameterize ([current-offer #'offer])
+    body ...))
 
-(define-simple-macro (with-offer (offer) body ...)
-  (syntax-parameterize
-   ([when-offer-fragment (syntax-parser [(_ (offer-formal) frag-body (... ...))
-					 #'(let ([offer-formal offer])
-					     frag-body (... ...)
-					     (continue-with (void)))])])
-   body ...))
-  
 (define-simple-macro (cas!-fragment bx-e ov-e nv-e)
   (let ([b bx-e]
 	[ov ov-e]
 	[nv nv-e])
     (with-cas (b ov nv) (continue-with (void)))))
+
+(define-syntax (if-offer-fragment stx)
+  (define offer (syntax-parameter-value #'current-offer))
+  (syntax-parse stx
+   [(_ offer-formal true-body false-body)
+    (if offer 
+	#`(let ([offer-formal #,offer]) true-body)
+	#'false-body)]))
+
+(define-simple-macro (when-offer-fragment (offer-formal) body ...)
+  (if-offer-fragment offer-formal (let () body ... (continue-with (void))) 
+		     (continue-with (void))))
 
 (define-syntax (read-match-fragment stx)
   (define/with-syntax (b ov nv) (generate-temporaries '(bx ov nv)))
@@ -101,10 +107,15 @@
 
 (define-syntax (sequence stx)
   (syntax-parse stx
-    [(_)   #'(continue-with (void))]
-    [(_ f) #'f]
-    [(_ f1 f ...)
-     #'(bind (_ f1) (sequence f ...))]))
+    [(_)          #'(continue-with (void))]
+    [(_ f)        #'f]
+    [(_ f1 f ...) #'
+     (syntax-parameterize ([continue-with 
+			    (let ([old (syntax-parameter-value #'continue-with)])
+			      (syntax-parser [(_ code)
+					      #`(let () code
+						     (syntax-parameterize ([continue-with #,old]) (sequence f ...)))]))])
+			  f1)]))
 
 (define-simple-macro (choose-fragment f1 f2)
   (let* ([retry*         (λ () (retry))]
@@ -149,7 +160,7 @@
       (define offer #f) ; FIXME
       (with-retry-handler (try-with-offer)
        (with-block-handler (try-with-offer)
-        (with-offer (offer)
+        (with-offer offer
          (bind (result f) ;; FIXME: delay this allocation until after the kcas
                (if (do-kcas!)
                    (begin (do-postlude!) result)

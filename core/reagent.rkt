@@ -16,8 +16,9 @@
 (define-simple-macro (define-reagent (name:id arg ...) body:reagent-body)
   (define-syntax name (reagent (list #'arg ...) #'(body.prelude ...) #'body.fragment)))
 
+; FIXME: should the closed fragment code be shared between different react invocations?
 (define-simple-macro (react body:reagent-body)
-  (begin body.prelude ... (close-fragment body.fragment)))
+  (begin body.prelude ... (close-fragment body.fragment))) 
 
 (define-simple-macro (-reagent body ...)
   (let () (define-reagent (r) body ...) (r)))
@@ -49,6 +50,16 @@
                                    #'retry #'block #'continue-with #'static-kcas! #'do-kcas!
 				   #'reflect-fragment #'reify-fragment))))))]))
 
+
+(define b '())
+(define o '())
+(define n '())
+
+(define-reagent (r x)
+  (cas! b o n))
+
+(pmacro
+ (react (r 0)))
 
 #|
 (pmacro
