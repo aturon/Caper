@@ -6,8 +6,7 @@
          (for-syntax "syntax.rkt" "static.rkt" racket/base syntax/parse unstable/syntax racket/syntax racket/pretty)
 	 (for-template racket/base))
 
-(provide define-reagent cas! read-match update-to! react pmacro prelude postlude block
-         (for-syntax ))
+(provide define-reagent cas! read-match update-to! react pmacro prelude postlude block dynamic)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Core reagent implementation
@@ -50,6 +49,7 @@
                                    #'retry #'block #'continue-with #'static-kcas! #'do-kcas!
 				   #'reflect-fragment #'reify-fragment))))))]))
 
+#|
 
 (define b '())
 (define o '())
@@ -60,6 +60,8 @@
 
 (pmacro
  (react (r 0)))
+
+|#
 
 #|
 (pmacro

@@ -79,7 +79,7 @@
     ['()
      #t]
     [(list (kcas-item ar ov nv))
-     (atomic-ref-cas! ar ov nv)]
+     (unsafe-box*-cas! ar ov nv)]
     [_ (match (acquire items)
          ['() (commit items)]
          [unacquired (roll-back-until items unacquired)])]))

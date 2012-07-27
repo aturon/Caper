@@ -63,7 +63,7 @@
 	[nv nv-e])
     (with-cas (b ov nv) (continue-with (void)))))
 
-(define-syntax (if-offer-fragment stx)
+(define-syntax (if-offer stx)
   (define offer (syntax-parameter-value #'current-offer))
   (syntax-parse stx
    [(_ offer-formal true-body false-body)
@@ -72,8 +72,8 @@
 	#'false-body)]))
 
 (define-simple-macro (when-offer-fragment (offer-formal) body ...)
-  (if-offer-fragment offer-formal (let () body ... (continue-with (void))) 
-		     (continue-with (void))))
+  (if-offer offer-formal (let () body ... (continue-with (void))) 
+	    (continue-with (void))))
 
 (define-syntax (read-match-fragment stx)
   (define/with-syntax (b ov nv) (generate-temporaries '(bx ov nv)))
@@ -124,17 +124,24 @@
     (with-retry-handler (alt-with-retry)
      (with-block-handler (alt) f1))))
 
-(define-simple-macro (reify-fragment prelude f)
-  (λ (k retry-k block-k)
-    prelude
-    (syntax-parameterize
+(define-simple-macro (reflect-environment k retry-k block-k body)
+  (syntax-parameterize
      ([continue-with (syntax-parser [(_ result) 
 				     #`(k result 
 					  (flatten-mixed-kcas #,@(syntax-parameter-value #'kcas-list))
 					  (lambda () #,(syntax-parameter-value #'postlude-action)))])]
       [retry (syntax-parser [(_) #'(retry-k)])]
       [block (syntax-parser [(_) #'(block-k)])])
-     f)))
+    body))
+
+(define-simple-macro (reify-fragment prelude f)
+  (cons (λ (k retry-k block-k)
+	   prelude
+	   (reflect-environment k retry-k block-k f))
+	(λ (k retry-k block-k offer)
+	   prelude
+	   (reflect-environment k retry-k block-k 
+				(with-offer offer f)))))
 
 (define-simple-macro (reflect-fragment runtime-fragment)
   (let ([k       (λ (result additional-kcas-list additional-postlude) 
@@ -143,7 +150,8 @@
 		      (continue-with result))))]
 	[retry-k (λ () (retry))]
 	[block-k (λ () (block))])
-    (runtime-fragment k retry-k block-k)))
+    (if-offer offer ((cdr runtime-fragment) k retry-k block-k offer)
+	      ((car runtime-fragment) k retry-k block-k))))
 
 ;; indirection so that this expands at the right time
 (define-syntax (do-kcas! stx)

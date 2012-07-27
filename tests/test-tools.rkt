@@ -6,7 +6,7 @@
 (provide multithreaded-for-effect)
 
 ; number of total iterations for multithreaded testing
-(define iters 1000000)
+(define iters 100000)
 
 ; (multithreaded-for-effect code threads) runs `code` within `threads' threads
 ; for a large number of iterations.
