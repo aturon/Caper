@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require "syntax.rkt" "keywords.rkt" "fragment.rkt"         
+(require "keywords.rkt" "fragment.rkt"         
 	 syntax/parse/define
 	 macro-debugger/expand racket/stxparam racket/match racket/pretty
          (for-syntax "syntax.rkt" "static.rkt" racket/base syntax/parse unstable/syntax racket/syntax racket/pretty)
@@ -21,6 +21,10 @@
 
 (define-simple-macro (-reagent body ...)
   (let () (define-reagent (r) body ...) (r)))
+
+(define-syntax (define-reagent-syntax stx)
+  (syntax-parse stx
+    [(_ id rhs) #'(define-syntax id (reagent-macro rhs))]))
 
 (provide (rename-out [-reagent reagent]))
 

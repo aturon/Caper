@@ -4,7 +4,10 @@
 
 (require syntax/parse racket/syntax "static.rkt"
 	 (for-template racket/base "fragment.rkt" "keywords.rkt" "atomic-ref.rkt"))
-(provide reagent-clause reagent-body)
+(provide reagent-clause reagent-body reagent-macro)
+
+(struct reagent-macro (trans)
+  #:property prop:procedure (λ (stx) (raise-syntax-error #f "must be used inside a reagent" stx)))
 
 (define-syntax-class read-match-clause
   ;; can't lift preludes above here, because they might
@@ -62,6 +65,14 @@
   (pattern (dynamic e:expr)
            #:with (prelude ...) #'()
            #:attr fragment #'(reflect-fragment e))
+  
+  (pattern [(~var r (static reagent-macro? "reagent macro")) . args]
+           #:attr trans (reagent-macro-trans (attribute r.value))
+           #:with new-stx:reagent-clause 
+           (let ([intr (make-syntax-introducer)])
+             (intr ((attribute trans) (intr this-syntax)))) 
+           #:with (prelude ...) #'(new-stx.prelude ...)
+           #:with fragment #'new-stx.fragment)
   
   (pattern [(~var r (static reagent? "static reagent")) args:expr ...]
            #:with (formals ...) (reagent-formals (attribute r.value))
