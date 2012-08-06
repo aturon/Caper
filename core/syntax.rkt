@@ -31,7 +31,7 @@
   #:attributes ((prelude 1) fragment)
   (pattern (cas! atomic-ref:expr old-value:expr new-value:expr)
            #:with (bv bx) (generate-temporaries '(bv bx))
-           #:attr fragment #'(cas!-fragment bx old-value new-value)
+           #:attr fragment #'(cas!-fragment bv bx old-value new-value)
            #:with (prelude ...) 
 	   #'((define bv atomic-ref)
 	      (unless (atomic-ref? bv)
@@ -44,7 +44,7 @@
 
   (pattern (read-match atomic-ref:expr clause:read-match-clause ...)
            #:with (bv bx) (generate-temporaries '(bv bx))
-           #:attr fragment #'(read-match-fragment bx clause.fragment ...)
+           #:attr fragment #'(read-match-fragment bv bx clause.fragment ...)
            #:with (prelude ...)
 	   #'((define bv atomic-ref)
 	      (unless (atomic-ref? bv)

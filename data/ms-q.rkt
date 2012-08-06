@@ -6,10 +6,7 @@
 	 caper/core/atomic-ref)
 (provide make-queue enq deq enq! deq!)
 
-; next is of type atomic-ref(#f U node)
-(struct node (data next))
-
-; AT: should we mark this immutable?
+(struct node (data next)) ; next is of type atomic-ref(#f U node)
 (struct queue (head tail))
 
 (define (internal-make-node data)

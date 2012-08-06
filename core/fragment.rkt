@@ -2,7 +2,10 @@
 
 ; Fragments: an expansion-time monad for generating reagent code
 
-(require "atomic-ref.rkt" "keywords.rkt"
+(require caper/core/atomic-ref
+	 caper/core/kcas
+	 caper/core/keywords
+	 caper/core/thread
 	 (for-syntax syntax/parse 
 		     racket/syntax)
          racket/unsafe/ops
@@ -57,11 +60,13 @@
   (syntax-parameterize ([current-offer #'offer])
     body ...))
 
-(define-simple-macro (cas!-fragment bx-e ov-e nv-e)
-  (let ([b bx-e]
-	[ov ov-e]
+(define-simple-macro (cas!-fragment aref b ov-e nv-e)
+  (let ([ov ov-e]
 	[nv nv-e])
-    (with-cas (b ov nv) (continue-with (void)))))
+    (with-cas (b ov nv) 
+      (with-postlude (when (blocking-atomic-ref? aref)
+		       ((waiter-group-signal-all (blocking-atomic-ref-waiters aref))))
+        (continue-with (void))))))
 
 (define-syntax (if-offer stx)
   (define offer (syntax-parameter-value #'current-offer))
@@ -71,31 +76,33 @@
 	#`(let ([offer-formal #,offer]) true-body)
 	#'false-body)]))
 
-(define-simple-macro (when-offer-fragment (offer-formal) body ...)
-  (if-offer offer-formal (let () body ... (continue-with (void))) 
-	    (continue-with (void))))
+(define-simple-macro (when-offer (offer-formal) body ...)
+  (if-offer offer-formal (let () body ... (void)) (void)))
 
 (define-syntax (read-match-fragment stx)
-  (define/with-syntax (b ov nv) (generate-temporaries '(bx ov nv)))
+  (define/with-syntax (ar bx ov nv) (generate-temporaries '(ar bx ov nv)))
   (define-syntax-class clause
     #:literals (update-to!)
     #:attributes (mclause)
     (pattern [pat (prelude ...) pre ... (update-to! up-e) post ...]
              #:with mclause
              #'[pat prelude ... 
-                    (sequence pre ... 
-                              (let ([nv up-e]) (with-cas (b ov nv) (continue-with (void))))
-                              post ...)])
+                    (sequence pre ... (cas!-fragment ar bx ov up-e) post ...)])
     (pattern [pat (prelude ...) (update-to!) post ...]
              #:with mclause
              #'[pat prelude ...
-		    (sequence (with-cas (b ov ov) (continue-with (void)))
-			      post ...)]))
+		    (sequence (with-cas (bx ov ov) (continue-with (void))) post ...)]))
   (syntax-parse stx #:literals (update-to!)
-    [(_ bx-e cl:clause ...)
-     #'(let* ([b bx-e]
-              [ov (unsafe-unbox* b)])
-         (match ov cl.mclause ... [_ (block)]))]))
+    [(_ aref-e bx-e cl:clause ...)
+     #'(let* ([ar aref-e]
+	      [bx bx-e]
+	      [ov (unsafe-unbox* bx)])
+	 (when-offer (offer)
+           (when (blocking-atomic-ref? ar)
+	     ((waiter-group-enroll (blocking-atomic-ref-waiters ar)) offer)))
+         (match ov 
+	   cl.mclause ... 
+	   [_ (block)]))]))
 
 (define-simple-macro (bind (x:id e:expr) body ...)
   (syntax-parameterize ([continue-with 
@@ -165,9 +172,10 @@
 (define-simple-macro (close-fragment f)
   (let ()
     (define (try-with-offer)
-      (define offer #f) ; FIXME
+      (define offer tl-semaphore) ; for now, just a semaphore
       (with-retry-handler (try-with-offer)
-       (with-block-handler (try-with-offer)
+       (with-block-handler (begin (fsemaphore-wait offer)
+				  (try-with-offer))
         (with-offer offer
          (bind (result f) ;; FIXME: delay this allocation until after the kcas
                (if (do-kcas!)
