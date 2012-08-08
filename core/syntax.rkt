@@ -22,9 +22,14 @@
   #:property prop:procedure (λ (stx) (raise-syntax-error #f "must be used inside a reagent" stx)))
 
 (define-syntax-class reagent-clause
-  #:literals (#%cas! #%choose #%read #%dynamic)
+  #:literals (#%cas! #%choose #%read #%dynamic #%match values begin-reagent computed)
   #:description "define-reagent clause"
   #:attributes ((prelude 1) payload)
+
+  (pattern m:reagent-macro-application
+           #:with new-clause:reagent-clause #'m.transformed
+           #:with (prelude ...) #'(new-clause.prelude ...)
+           #:attr payload #'new-clause.payload)
 
   (pattern (#%cas! box:id old-value:id new-value:id)
            #:with (prelude ...) #'()
@@ -37,6 +42,10 @@
   (pattern (#%choose r:reagent-clause s:reagent-clause)
            #:with (prelude ...) #'(r.prelude ... s.prelude ...)
            #:attr payload #'(sem:#%choose r.payload s.payload))
+
+  (pattern (#%match x:id [pat r:reagent-body] ...)
+           #:with (prelude ...) #'(r.prelude ... ...)
+           #:attr payload #'(sem:#%match x [pat r.payload] ...))
   
   (pattern ((~literal prelude) e:expr ...)
            #:with (prelude ...) #'(e ...)
@@ -45,14 +54,6 @@
   (pattern ((~literal postlude) e:expr ...)
            #:with (prelude ...) #'()
 	   #:attr payload #'(sem:#%postlude (begin e ...)))
-  
-  (pattern [(~var r (static reagent-macro? "reagent macro")) . args]
-           #:attr trans (reagent-macro-trans (attribute r.value))
-           #:with new-stx:reagent-clause 
-           (let ([intr (make-syntax-introducer)])
-             (intr ((attribute trans) (intr this-syntax)))) 
-           #:with (prelude ...) #'(new-stx.prelude ...)
-           #:with payload #'new-stx.payload)
   
   (pattern [(~var r (static static-reagent? "static reagent")) args:expr ...]
            #:with (formals ...) (static-reagent-formals (attribute r.value))
@@ -74,13 +75,31 @@
            #:with (prelude ...) #'()
            #:attr payload #'(sem:#%reflect e)))
 
+(define-syntax-class reagent-macro-application
+  #:attributes (transformed)
+
+  (pattern [(~var r (static reagent-macro? "reagent macro")) . args]
+           #:attr transform (reagent-macro-trans (attribute r.value))
+           #:with transformed
+           (let ([intr (make-syntax-introducer)])
+             (intr ((attribute transform) (intr this-syntax))))))
+
 (define-splicing-syntax-class reagent-body
   #:literals (bind-values)
   #:attributes ([prelude 1] payload)
 
+  (pattern (~seq m:reagent-macro-application rest:reagent-body)
+           #:with (new-body:reagent-body) #'(m.transformed rest)
+           #:with (prelude ...) #'(new-body.prelude ...)
+           #:with payload #'new-body.payload)
+  
   (pattern c:reagent-clause
            #:with (prelude ...) #'(c.prelude ...)
            #:attr payload #'c.payload)
+
+  (pattern (~seq c:reagent-clause rest:reagent-body)
+           #:with (prelude ...) #'(c.prelude ... rest.prelude ...)
+           #:attr payload #'(sem:#%seq c.payload rest.payload))
 
   (pattern (~seq (bind-values (x:id ...) c:reagent-clause) rest:reagent-body)
 	   #:with (prelude ...) #'(c.prelude ... rest.prelude ...)

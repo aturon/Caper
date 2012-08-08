@@ -23,4 +23,4 @@
        ...
        (provide id ...))]))
 
-(provide-keyword #%read #%cas! #%choose prelude postlude begin-reagent computed bind-values)
+(provide-keyword #%read #%cas! #%choose #%match prelude postlude begin-reagent computed bind-values)

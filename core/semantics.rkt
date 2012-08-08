@@ -11,7 +11,7 @@
 	 racket/syntax
 	 racket/stxparam
 	 racket/stxparam-exptime)
-(provide #%return #%bind #%retry #%block #%cas! #%choose #%read #%postlude #%reflect #%reify #%delimit)
+(provide #%return #%bind #%seq #%retry #%block #%cas! #%choose #%read #%postlude #%match #%reflect #%reify #%delimit)
 
 ; TODO: replace this with an exported debugging expansion function
 ;; for debugging only
@@ -67,13 +67,23 @@
 	     k))]))])
    e))
 
+(define-simple-macro (#%seq e f)
+  (syntax-parameterize 
+   ([#%return 
+     (with-syntax ([old (syntax-parameter-value #'#%return)])
+       (syntax-parser 
+	[(_ result (... ...))
+	 (syntax-parameterize ([#%return old])
+           f)]))])
+   e))
+
 (define-simple-macro (#%postlude e)
   (with-postlude e (#%return (void))))
 
-(define-simple-macro (#%cas! b o n)
+(define-simple-macro (#%cas! b:id o:id n:id)
   (with-cas (b o n) (#%return (void))))
 
-(define-simple-macro (#%read b)
+(define-simple-macro (#%read b:id)
   (let ([x (unbox b)])
     (with-cas (b x x)     ; TODO: add separate 'read' list
       (#%return x))))
@@ -95,6 +105,12 @@
 	 [alt-with-retry (λ () (with-block-handler (retry*) f2))])
     (with-retry-handler (alt-with-retry)
      (with-block-handler (alt) f1))))
+
+(define-simple-macro (#%match x:id [pat body ...] ...)
+  (match x
+    [pat body ...]
+    ...
+    [_ (#%block)]))
 
 (define-simple-macro (reflect-environment k retry-k block-k body)
   (syntax-parameterize
