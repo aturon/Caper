@@ -20,10 +20,9 @@
 (push! s 2)
 (check-equal? (pop! s) 2 "pop! on two-element stack not top element")
 (check-equal? (pop! s) 1 "second pop! on two-element stack not bottom element")
-#|(check-equal? (pop! s #f) #f "pop! on empty stack not failure-result")
+(check-equal? (pop! s #f) #f "pop! on empty stack not failure-result")
 
 (multithreaded-for-effect 2
   (begin (push! s 1)
 	 (pop! s)))
 (check-equal? (pop! s #f) #f "simple multithreaded push!/pop! test failed")
-|#

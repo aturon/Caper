@@ -29,7 +29,7 @@
 
 (define-syntax-parameter current-offer #f) ; syntax for the offer, or #f if there is none
 (define-syntax-parameter kcas-list '()) ; CAS clauses to perform
-(define-syntax-parameter postlude-action #'void) ; postlude action to perform; should be (-> Any)
+(define-syntax-parameter postlude-action #'(void)) ; postlude action to perform
 
 (define-simple-macro (with-cas (box ov nv) body ...)
   (syntax-parameterize ([kcas-list (cons (list #'box #'ov #'nv) 
@@ -41,7 +41,7 @@
     body ...))
 
 (define-simple-macro (with-postlude post body ...)
-  (syntax-parameterize ([postlude-action (begin (syntax-parameter-value #'postlude-action) #'post)])
+  (syntax-parameterize ([postlude-action #`(begin #,(syntax-parameter-value #'postlude-action) post)])
     body ...))
 
 (define-simple-macro (with-retry-handler handler body ...)
@@ -55,18 +55,6 @@
 (define-simple-macro (with-offer offer body ...)
   (syntax-parameterize ([current-offer #'offer])
     body ...))
-
-#;
-(define-simple-macro (#%bind e (x:id ...) k)
-  (syntax-parameterize 
-   ([#%return 
-     (with-syntax ([old (syntax-parameter-value #'#%return)])
-       (syntax-parser 
-	[(_ result (... ...))
-	 #'(syntax-parameterize ([#%return old])
-             (let-values ([(x ...) (values result (... ...))])
-	       k))]))])
-   e))
 
 (define-simple-macro (#%bind e (~and x (~or _:id (_:id ...))) k)
   (syntax-parameterize 
@@ -152,7 +140,7 @@
   (syntax-parse stx
     [(_ result ...)
      #'(if (static-kcas! cas-item ...)
-	   (begin (post-action) (values result ...))
+	   (begin post-action (values result ...))
 	   (#%retry))])) 
 
 (define-simple-macro (#%delimit f)
