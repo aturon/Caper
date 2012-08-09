@@ -8,11 +8,11 @@
     (if (identifier? stx)
         (raise-syntax-error
          #f
-         "illegal (unparenthesized) use of a define-reagent keyword"
+         "illegal (unparenthesized) use of a reagent keyword"
          orig-stx)
         (raise-syntax-error
          #f
-         "use of a define-reagent keyword is not in a define-reagent top-level"
+         "use of a reagent keyword is not in an appropriate reagent context"
          orig-stx))))
 
 (define-syntax provide-keyword
@@ -23,4 +23,7 @@
        ...
        (provide id ...))]))
 
-(provide-keyword #%read #%cas! #%choose #%match prelude postlude begin-reagent computed bind-values)
+(provide provide-keyword)
+
+(provide-keyword #%read #%cas! #%choose #%match
+                 block retry prelude postlude begin-reagent computed bind-values)

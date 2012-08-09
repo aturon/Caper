@@ -2,22 +2,26 @@
 
 ; a specialized form of box usable within reagents; allows KCAS operations
 
-(require "kcas.rkt"
-         racket/future racket/unsafe/ops)
+(require caper/core/kcas
+         caper/core/top-level
+         caper/core/keywords
+         caper/base/macros
+         racket/future
+         racket/unsafe/ops
+         (for-syntax syntax/parse racket/syntax))
 (provide atomic-ref
          atomic-ref?
          atomic-ref-read
          atomic-ref-cas!
-         atomic-ref-box ;; internal library use only!
-         unsafe-atomic-ref-box  ;; internal use only!
 	 blocking-atomic-ref
 	 blocking-atomic-ref?
-	 blocking-atomic-ref-box
-	 blocking-atomic-ref-waiters
 	 waiter-group
 	 waiter-group?
 	 waiter-group-enroll
 	 waiter-group-signal-all
+         read
+         read-match
+         cas!
 )
 
 ; the type "atomic-ref" is a synonym for internal-atomic-ref
@@ -68,82 +72,47 @@
   (internal-blocking-atomic-ref-waiters baref))
 
 
+(define-reagent-rewrite (read aref)
+  (begin-reagent
+   (bind b (values (atomic-ref-box aref)))
+   (read b)))
 
+(define-reagent-rewrite (cas! aref-e ov-e nv-e)
+  (begin-reagent
+   (bind aref (values aref-e))
+   (bind-values (b ov nv)
+                (values (atomic-ref-box aref) ov-e nv-e))
+   (#%cas! b ov nv)
+   (postlude
+    (when (blocking-atomic-ref? aref)
+      ((waiter-group-signal-all (blocking-atomic-ref-waiters aref)))))))
 
-(define-syntax-class read-match-clause
-  ;; can't lift preludes above here, because they might
-  ;; escape their binders
-  #:literals (update-to!)
-  (pattern (match-pat pre:reagent-clause ...
-                      (update-to! new-value:expr)
-                      post:reagent-clause ...)
-           #:attr fragment
-	          #'(match-pat [pre.prelude ... ...
-				post.prelude ... ...]
-			       pre.fragment ...
-			       (update-to! new-value)
-			       post.fragment ...))
-   (pattern (match-pat f:reagent-clause ...)
-            #:attr fragment 
-                   #'(match-pat [f.prelude ... ...]
-				(update-to!) 
-				f.fragment ...)))
+(provide-keyword update-to!)
 
-
-
-
-(define-syntax (read-match-fragment stx)
+(define-reagent-syntax (read-match stx)
   (define/with-syntax (ar bx ov nv) (generate-temporaries '(ar bx ov nv)))
-  (define-syntax-class clause
+  (define-syntax-class match-clause
     #:literals (update-to!)
-    #:attributes (mclause)
-    (pattern [pat (prelude ...) pre ... (update-to! up-e) post ...]
-             #:with mclause
-             #'[pat prelude ... 
-                    (sequence pre ... (cas!-fragment ar bx ov up-e) post ...)])
-    (pattern [pat (prelude ...) (update-to!) post ...]
-             #:with mclause
-             #'[pat prelude ...
-		    (sequence (with-cas (bx ov ov) (continue-with (void))) post ...)]))
-  (syntax-parse stx #:literals (update-to!)
-    [(_ aref-e bx-e cl:clause ...)
-     #'(let* ([ar aref-e]
-	      [bx bx-e]
-	      [ov (unsafe-unbox* bx)])
-	 (when-offer (offer)
-           (when (blocking-atomic-ref? ar)
-	     ((waiter-group-enroll (blocking-atomic-ref-waiters ar)) offer)))
-         (match ov 
-	   cl.mclause ... 
-	   [_ (block)]))]))
+    
+    (pattern [match-pat pre ... (update-to! nv-e:expr) post ...]
+             #:attr transformed
+             #'[match-pat pre ...
+                          (bind nv (values nv-e))
+                          (#%cas! bx ov nv)
+                          post ...])
+    
+   (pattern [match-pat c ...]
+            #:attr transformed
+            #'[match-pat (#%cas! bx ov ov) c ...]))
 
+  (syntax-parse stx
+    [(_ aref-e cl:match-clause ...)
+     #'(begin-reagent
+        (bind ar (values aref-e))
+        (bind bx (values (atomic-ref-box ar)))
+        (bind ov (values (unsafe-unbox* bx)))
+	 ;; (when-offer (offer)
+         ;;   (when (blocking-atomic-ref? ar)
+	 ;;     ((waiter-group-enroll (blocking-atomic-ref-waiters ar)) offer)))
+        (match-reagent ov cl.transformed ... ))]))
 
-(define-simple-macro (cas!-fragment aref b ov-e nv-e)
-  (let ([ov ov-e]
-	[nv nv-e])
-    (with-cas (b ov nv) 
-      (with-postlude (when (blocking-atomic-ref? aref)
-		       ((waiter-group-signal-all (blocking-atomic-ref-waiters aref))))
-        (continue-with (void))))))
-
-#|
-
-  (pattern (cas! atomic-ref:expr old-value:expr new-value:expr)
-           #:with (bv bx) (generate-temporaries '(bv bx))
-           #:attr fragment #'(cas!-fragment bv bx old-value new-value)
-           #:with (prelude ...) 
-	   #'((define bv atomic-ref)
-	      (unless (atomic-ref? bv)
-		(error 'cas! "atomic-ref expected, but got" bv))
-              (define bx (atomic-ref-box bv))))
-
-  (pattern (read-match atomic-ref:expr clause:read-match-clause ...)
-           #:with (bv bx) (generate-temporaries '(bv bx))
-           #:attr fragment #'(read-match-fragment bv bx clause.fragment ...)
-           #:with (prelude ...)
-	   #'((define bv atomic-ref)
-	      (unless (atomic-ref? bv)
-		(error 'read-match "atomic-ref expected, but got" bv))
-              (define bx (atomic-ref-box bv))))
-
-|#

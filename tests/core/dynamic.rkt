@@ -2,9 +2,8 @@
 
 #lang racket/base
 
-(require "../../core/atomic-ref.rkt" 
-	 "../../core/reagent.rkt" 
-	 "../test-tools.rkt"
+(require caper/base/top-level
+         caper/tests/test-tools
 	 rackunit)
 
 (define ar (atomic-ref 0))
@@ -18,6 +17,6 @@
 
 (define dyn-test cas-test)
 
-(react (dynamic (dyn-test 1 2)))
+(react (computed (dyn-test 1 2)))
 
 (check-equal? (atomic-ref-read ar) 2 "dynamic cas failed")

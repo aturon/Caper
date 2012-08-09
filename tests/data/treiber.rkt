@@ -1,7 +1,7 @@
 #lang racket/base
 
-(require "../../data/treiber.rkt" 
-	 "../test-tools.rkt"
+(require caper/data/treiber
+         caper/tests/test-tools
 	 rackunit)
 
 (define s (make-treiber-stack))

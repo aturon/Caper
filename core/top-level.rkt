@@ -1,13 +1,15 @@
 #lang racket
 
 (require syntax/parse/define
+         macro-debugger/expand
          caper/core/keywords
          caper/core/syntax
          (prefix-in sem: caper/core/semantics)
          (for-syntax caper/core/syntax syntax/parse))
 (provide #%read #%cas! #%choose #%match
-         prelude postlude begin-reagent computed bind-values
-         define-reagent define-reagent-syntax react reagent)
+         block retry prelude postlude begin-reagent computed bind-values
+         define-reagent define-reagent-syntax react reagent
+         pmacro)
 
 (define-simple-macro (define-reagent (name:id arg ...) body:reagent-body)
   (define-syntax name (static-reagent (list #'arg ...) #'(body.prelude ...) #'body.payload)))
@@ -24,12 +26,10 @@
   (syntax-parser
    [(_ id rhs)
     #'(define-syntax id (reagent-macro rhs))]
-   [(_ (id arg ...) rhs)
-    #'(define-syntax id (reagent-macro (lambda (arg ...) rhs)))]))
+   [(_ (id arg ...) rhs ...)
+    #'(define-syntax id (reagent-macro (lambda (arg ...) rhs ...)))]))
 
 ; Below: debugging infrastructure, needs to be reinstated
-
-#|
 
 (define (cleanup s)  
   (match s
@@ -44,12 +44,9 @@
 			 (pretty-print
                           (cleanup
                            (syntax->datum
-                            (expand-only 
-                             #'e 
-                             (list #'define-reagent #'sequence #'close-fragment #'cas!-fragment
-                                   #'with-retry-handler #'with-block-handler #'bind #'with-cas
-                                   #'choose-fragment #'read-match-fragment #'react
-                                   #'retry #'block #'continue-with #'static-kcas! #'do-kcas!
-				   #'reflect-fragment #'reify-fragment))))))]))
-
-|#
+                            (expand/show-predicate
+                             #'e
+                             (lambda (id)
+                               (regexp-match-positions
+                                #rx"(#%|block|retry|prelude|postlude|begin-reagent|computed|bind-values|define-reagent|define-reagent-syntax|react|reagent|with-retry-handler|with-block-handler|with-cas)"
+                                (symbol->string (syntax->datum id)))))))))]))

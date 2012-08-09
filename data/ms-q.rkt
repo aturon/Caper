@@ -1,9 +1,7 @@
 #lang racket
 
-(require racket/future
-	 racket/match
-         caper/core/reagent 
-	 caper/core/atomic-ref)
+(require racket/match
+         caper/base/top-level)
 (provide make-queue enq deq enq! deq!)
 
 (struct node (data next)) ; next is of type atomic-ref(#f U node)
@@ -25,8 +23,8 @@
   (read-match (queue-head q)
     [(node _ (aref (and n (node x _)))) 
      (update-to! n) 
-     x]
-    [emp (if (procedure? failure-result) (failure-result) failure-result)]))
+     (values x)]
+    [emp (values (if (procedure? failure-result) (failure-result) failure-result))]))
 
 (define (find q)
   (define tail-aref (queue-tail q))

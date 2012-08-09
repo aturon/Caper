@@ -1,7 +1,7 @@
 #lang racket/base
 
-(require "../../data/ms-q.rkt" 
-	 "../test-tools.rkt"
+(require caper/data/ms-q
+	 caper/tests/test-tools
 	 rackunit)
 
 (define q (make-queue))

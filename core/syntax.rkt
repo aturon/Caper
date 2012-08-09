@@ -16,13 +16,13 @@
       [(f actuals ...) 
        #`(#,(datum->syntax stx '#%app) f actuals ...)]
       [_ #`(λ #,(static-reagent-formals r)             
-             (#%reify (begin #,@(static-reagent-prelude r)) #,(static-reagent-payload r)))])))
+             (sem:#%reify (begin #,@(static-reagent-prelude r)) #,(static-reagent-payload r)))])))
 
 (struct reagent-macro (trans)
   #:property prop:procedure (λ (stx) (raise-syntax-error #f "must be used inside a reagent" stx)))
 
 (define-syntax-class reagent-clause
-  #:literals (#%cas! #%choose #%read #%dynamic #%match values begin-reagent computed)
+  #:literals (#%cas! #%choose #%read #%match block retry values begin-reagent computed)
   #:description "define-reagent clause"
   #:attributes ((prelude 1) payload)
 
@@ -46,6 +46,14 @@
   (pattern (#%match x:id [pat r:reagent-body] ...)
            #:with (prelude ...) #'(r.prelude ... ...)
            #:attr payload #'(sem:#%match x [pat r.payload] ...))
+
+  (pattern (block)
+           #:with (prelude ...) #'()
+           #:attr payload #'(sem:#%block))
+
+  (pattern (retry)
+           #:with (prelude ...) #'()
+           #:attr payload #'(sem:#%retry))
   
   (pattern ((~literal prelude) e:expr ...)
            #:with (prelude ...) #'(e ...)
@@ -88,10 +96,10 @@
   #:literals (bind-values)
   #:attributes ([prelude 1] payload)
 
-  (pattern (~seq m:reagent-macro-application rest:reagent-body)
-           #:with (new-body:reagent-body) #'(m.transformed rest)
+  (pattern (~seq m:reagent-macro-application c ...)
+           #:with (new-body:reagent-body) #'(m.transformed c ...)
            #:with (prelude ...) #'(new-body.prelude ...)
-           #:with payload #'new-body.payload)
+           #:attr payload #'new-body.payload)
   
   (pattern c:reagent-clause
            #:with (prelude ...) #'(c.prelude ...)

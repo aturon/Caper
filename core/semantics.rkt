@@ -62,9 +62,9 @@
      (with-syntax ([old (syntax-parameter-value #'#%return)])
        (syntax-parser 
 	[(_ result (... ...))
-	 (syntax-parameterize ([#%return old])
-           (let-values ([(x ...) (values result (... ...))])
-	     k))]))])
+	 #'(syntax-parameterize ([#%return old])
+             (let-values ([(x ...) (values result (... ...))])
+	       k))]))])
    e))
 
 (define-simple-macro (#%seq e f)
@@ -73,8 +73,8 @@
      (with-syntax ([old (syntax-parameter-value #'#%return)])
        (syntax-parser 
 	[(_ result (... ...))
-	 (syntax-parameterize ([#%return old])
-           f)]))])
+	 #'(syntax-parameterize ([#%return old])
+             f)]))])
    e))
 
 (define-simple-macro (#%postlude e)
@@ -141,7 +141,7 @@
     (if-offer offer ((cdr runtime-fragment) k retry-k block-k offer)
 	      ((car runtime-fragment) k retry-k block-k))))
 
-(define (final-k stx)
+(define-syntax (commit stx)
   (define/with-syntax (cas-item ...) (syntax-parameter-value #'kcas-list))
   (define/with-syntax post-action    (syntax-parameter-value #'postlude-action))
   (syntax-parse stx
@@ -153,16 +153,16 @@
 (define-simple-macro (#%delimit f)
   (let ()
     (define (try-with-offer)
-      (define offer tl-semaphore) ; for now, just a semaphore
+      (define offer #f) ; FIXME
       (with-retry-handler (try-with-offer)
        (with-block-handler (begin (fsemaphore-wait offer)
 				  (try-with-offer))
         (with-offer offer
-	 (syntax-parameterize ([#%return final-k])
+	 (syntax-parameterize ([#%return (syntax-local-value #'commit)])
 	   f)))))
     (define (try-without-offer)
       (with-retry-handler (try-without-offer)
        (with-block-handler (try-with-offer)
-	(syntax-parameterize ([#%return final-k])
+	(syntax-parameterize ([#%return (syntax-local-value #'commit)])
 	  f))))
     (try-without-offer)))
