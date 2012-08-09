@@ -21,6 +21,15 @@
 (struct reagent-macro (trans)
   #:property prop:procedure (λ (stx) (raise-syntax-error #f "must be used inside a reagent" stx)))
 
+(define-syntax-class reagent-macro-application
+  #:attributes (transformed)
+
+  (pattern [(~var r (static reagent-macro? "reagent macro")) . args]
+           #:attr transform (reagent-macro-trans (attribute r.value))
+           #:with transformed
+           (let ([intr (make-syntax-introducer)])
+             (intr ((attribute transform) (intr this-syntax))))))
+
 (define-syntax-class reagent-clause
   #:literals (#%cas! #%choose #%read #%match block retry values begin-reagent computed)
   #:description "define-reagent clause"
@@ -82,15 +91,6 @@
   (pattern (computed e:expr)
            #:with (prelude ...) #'()
            #:attr payload #'(sem:#%reflect e)))
-
-(define-syntax-class reagent-macro-application
-  #:attributes (transformed)
-
-  (pattern [(~var r (static reagent-macro? "reagent macro")) . args]
-           #:attr transform (reagent-macro-trans (attribute r.value))
-           #:with transformed
-           (let ([intr (make-syntax-introducer)])
-             (intr ((attribute transform) (intr this-syntax))))))
 
 (define-splicing-syntax-class reagent-body
   #:literals (bind-values)

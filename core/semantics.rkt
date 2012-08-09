@@ -56,6 +56,7 @@
   (syntax-parameterize ([current-offer #'offer])
     body ...))
 
+#;
 (define-simple-macro (#%bind e (x:id ...) k)
   (syntax-parameterize 
    ([#%return 
@@ -67,15 +68,19 @@
 	       k))]))])
    e))
 
-(define-simple-macro (#%seq e f)
+(define-simple-macro (#%bind e (~and x (~or _:id (_:id ...))) k)
   (syntax-parameterize 
    ([#%return 
      (with-syntax ([old (syntax-parameter-value #'#%return)])
        (syntax-parser 
 	[(_ result (... ...))
 	 #'(syntax-parameterize ([#%return old])
-             f)]))])
+             (call-with-values (λ () (values result (... ...)))
+                               (λ x k)))]))])
    e))
+
+(define-simple-macro (#%seq e f)
+  (#%bind e ignored f))
 
 (define-simple-macro (#%postlude e)
   (with-postlude e (#%return (void))))
