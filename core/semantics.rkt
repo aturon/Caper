@@ -29,7 +29,7 @@
 
 (define-syntax-parameter current-offer #f) ; syntax for the offer, or #f if there is none
 (define-syntax-parameter kcas-list '()) ; CAS clauses to perform
-(define-syntax-parameter postlude-action #'(void)) ; postlude action to perform
+(define-syntax-parameter postlude-action #'void) ; postlude action to perform; should be (-> Any)
 
 (define-simple-macro (with-cas (box ov nv) body ...)
   (syntax-parameterize ([kcas-list (cons (list #'box #'ov #'nv) 
