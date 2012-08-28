@@ -125,8 +125,8 @@
 				(with-offer offer f)))))
 
 (define-simple-macro (#%reflect runtime-fragment)
-  (let ([k       (λ (result additional-kcas-list additional-postlude) 
-		    (with-dyn-kcas additional-kcas-list 
+  (let ([k       (λ (result additional-kcas-list additional-postlude)
+		    (with-dyn-kcas additional-kcas-list
 		     (with-postlude (additional-postlude)
 		      (#%return result))))]
 	[retry-k (λ () (#%retry))]
@@ -141,7 +141,7 @@
     [(_ result ...)
      #'(if (static-kcas! cas-item ...)
 	   (begin post-action (values result ...))
-	   (#%retry))])) 
+	   (#%retry))]))
 
 (define-simple-macro (#%delimit f)
   (let ()

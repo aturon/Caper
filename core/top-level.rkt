@@ -11,12 +11,12 @@
          define-reagent define-reagent-syntax react reagent
          pmacro)
 
-(define-simple-macro (define-reagent (name:id arg ...) body:reagent-body)
-  (define-syntax name (static-reagent (list #'arg ...) #'(body.prelude ...) #'body.payload)))
+(define-simple-macro (define-reagent (name:id arg ...) pre:reagent-prelude body:reagent-body)
+  (define-syntax name (static-reagent (list #'arg ...) #'(pre.payload ...) #'body.payload)))
 
 ; FIXME: should the delimited code be shared between different react invocations?
-(define-simple-macro (react body:reagent-body)
-  (begin body.prelude ... (sem:#%delimit body.payload))) 
+(define-simple-macro (react pre:reagent-prelude body:reagent-body)
+  (begin pre.payload ... (sem:#%delimit body.payload)))
 
 ; FIXME: should this include arguments, more like a lambda form?
 (define-simple-macro (reagent body ...)
